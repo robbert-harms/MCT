@@ -1,5 +1,6 @@
 from mct.reconstruction_methods.STARC import STARC
 from mct.reconstruction_methods.rSoS import rSoS
+from mct.reconstruction_methods.rCovSoS import rCovSoS
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
@@ -8,7 +9,7 @@ __email__ = 'robbert.harms@maastrichtuniversity.nl'
 __licence__ = 'LGPL v3'
 
 
-reconstruction_classes = [STARC, rSoS]
+reconstruction_classes = [STARC, rSoS, rCovSoS]
 
 
 def list_reconstruction_methods():

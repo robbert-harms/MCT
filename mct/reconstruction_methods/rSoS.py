@@ -24,5 +24,5 @@ class rSoS(ReconstructionMethod):
         ''')
 
     def reconstruct(self, batch, volume_indices):
-        reconstruction = np.sqrt(np.sum(batch.astype(np.int32) ** 2, axis=2))
+        reconstruction = np.sqrt(np.sum(np.abs(batch).astype(np.float64) ** 2, axis=2))
         return {'reconstruction': reconstruction, 'tSNR': calculate_tsnr(reconstruction)}

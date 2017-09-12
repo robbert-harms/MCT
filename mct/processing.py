@@ -94,6 +94,11 @@ class ReconstructionProcessor(SimpleModelProcessor):
             self._logger.info('Loading first batch.')
             self._input_queue.put(volume_indices)
 
+
+        import time
+        time.sleep(1)
+
+
         batch = self._output_queue.get()
         self._input_queue.put(next_volume_indices)
 

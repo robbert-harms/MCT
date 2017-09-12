@@ -9,9 +9,7 @@ The axis are indexed zero-based. To use the last dimension use -1. By default it
 import argparse
 import os
 from argcomplete.completers import FilesCompleter
-
-import mdt
-from mct import load_nifti
+from mct.utils import split_write_volumes
 from mdt.nifti import nifti_filepath_resolution
 from mdt.shell_utils import BasicShellApplication
 import textwrap
@@ -51,7 +49,7 @@ class SplitVolumes(BasicShellApplication):
 
     def run(self, args, extra_args):
         input_file = os.path.realpath(get_input_file(args.input_file, os.path.realpath('')))
-        dirname, basename, extension = split_image_path(input_file)
+        dirname, _, _ = split_image_path(input_file)
 
         if args.output_folder is None:
             output_folder = dirname + '/split'
@@ -61,14 +59,7 @@ class SplitVolumes(BasicShellApplication):
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        nifti = load_nifti(input_file)
-        data = nifti.get_data()
-        header = nifti.get_header()
-
-        for ind in range(data.shape[args.axis]):
-            index = [slice(None)] * len(data.shape)
-            index[args.axis] = ind
-            mdt.write_nifti(data[index], header, '{}/{}_{}.nii'.format(output_folder, basename, ind))
+        split_write_volumes(input_file, output_folder, args.axis)
 
 
 def get_input_file(input_file, base_dir):

@@ -50,7 +50,11 @@ class BufferedInputReader(Process):
         self._output_queue = output_queue
 
         self._nmr_channels = len(self._input_niftis)
-        self._nmr_volumes = self._input_niftis[0].shape[3]
+
+        if len(self._input_niftis[0].shape) < 4:
+            self._nmr_volumes = 1
+        else:
+            self._nmr_volumes = self._input_niftis[0].shape[3]
         self._input_dtype = self._input_niftis[0].get_data_dtype()
 
     def run(self):
@@ -66,7 +70,10 @@ class BufferedInputReader(Process):
                                  dtype=self._input_dtype)
 
                 for channel_ind, nifti in enumerate(self._input_niftis):
-                    batch[..., channel_ind] = nifti.get_data()[index_tuple]
+                    data = nifti.get_data()[index_tuple]
+                    if len(data.shape) == 1:
+                        data = data[..., None]
+                    batch[..., channel_ind] = data
 
                 self._output_queue.put(batch)
 
@@ -237,3 +244,25 @@ def load_nifti(nifti_volume):
     """
     path = nifti_filepath_resolution(nifti_volume)
     return nib.load(path)
+
+
+def split_write_volumes(input_file, output_dir, axis=-1):
+    """Split and write the given input volume to separate nifti files.
+
+    Args:
+        input_file (str): the input nifti file to split
+        output_dir (str): the output directory, this will write the split volumes to that directory
+            with the same basename as the input file, with the slice index appended
+        axis (int): the axis to split on
+    """
+    dirname, basename, extension = split_image_path(input_file)
+
+    nifti = load_nifti(input_file)
+    data = nifti.get_data()
+    header = nifti.get_header()
+
+    for ind in range(data.shape[axis]):
+        index = [slice(None)] * len(data.shape)
+        index[axis] = ind
+        mdt.write_nifti(data[index], header, '{}/{}_{}.nii'.format(output_dir, basename, ind))
+
