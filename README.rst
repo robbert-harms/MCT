@@ -15,7 +15,7 @@ Summary
 * command line and python interface
 * Free Open Source Software: LGPL v3 license
 * Python and OpenCL based
-* Full documentation: http://mct.readthedocs.io
+* Full documentation: https://maastricht-coil-combine-toolbox.readthedocs.io/
 * Project home: https://github.com/cbclab/MCT
 * Uses the `GitLab workflow <https://docs.gitlab.com/ee/workflow/gitlab_flow.html>`_
 * Tags: MRI, coil-combine, image reconstruction, opencl, python
@@ -28,7 +28,17 @@ You can use the following command for combining all your channels using the STAR
 
 .. code-block:: console
 
-    $
+    $ mct-reconstruct STARC {0..15}.nii -m mask.nii
+
+Which will reconstruct your 16 channel coil data with the given (optional) mask.
+
+If you only want to use certain time points of your data, please extract these timepoints first using:
+
+.. code-block:: console
+
+    $ mct-extract-timepoints {0..15}.nii -t odd -o ./output_folder
+
+and then reconstruct your data based on those extracted timepoints.
 
 
 ************************
