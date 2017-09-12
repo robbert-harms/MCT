@@ -108,9 +108,10 @@ def get_cli_doc_items():
             items.append(item)
     return items
 
-with open('auto_gen_cli_index.rst', 'w') as f:
-    for item in get_cli_doc_items():
-        f.write(item[1:] + '\n\n\n')
+# enable when supported on RTD
+# with open('auto_gen_cli_index.rst', 'w') as f:
+#     for item in get_cli_doc_items():
+#         f.write(item[1:] + '\n\n\n')
 
 
 # If extensions (or modules to document with autodoc) are in another
@@ -133,7 +134,7 @@ import mct
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon', 'sphinx.ext.intersphinx',
-              'sphinx.ext.mathjax', 'sphinxarg.ext']
+              'sphinx.ext.mathjax'] # 'sphinxarg.ext' # enable when supported on RTD
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
