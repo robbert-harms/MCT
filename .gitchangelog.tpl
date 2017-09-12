@@ -3,7 +3,7 @@ Changelog
 *********
 
 
-{{#versions}}" }}
+{{#versions}}
 {{{label}}}
 {{#label_chars}}={{/label_chars}}
 {{#sections}}
