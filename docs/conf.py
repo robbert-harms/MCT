@@ -223,7 +223,7 @@ html_theme_options = {
     'logo_name': True,
     'sidebar_collapse': True,
     'fixed_sidebar': False,
-    'extra_nav_links': {'Module index': 'py-modindex.html'}
+    #'extra_nav_links': {'Module index': 'py-modindex.html'}
 }
 
 
