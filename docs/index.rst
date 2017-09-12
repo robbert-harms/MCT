@@ -13,3 +13,4 @@ Introduction
     :maxdepth: 2
     :hidden:
 
+    developers
