@@ -58,7 +58,7 @@ except ValueError:
     print('Logging disabled')
 
 
-def reconstruct(reconstruction_method, input_filenames, output_dir, mask=None, max_batch_size=50000,
+def reconstruct(reconstruction_method, input_filenames, output_dir, mask=None, max_batch_size=None,
                 cl_device_ind=None):
     """Reconstruct the MRI volumes using the desired reconstruction method.
 
@@ -71,7 +71,7 @@ def reconstruct(reconstruction_method, input_filenames, output_dir, mask=None, m
         mask (str): a mask or the filename of a mask. This expects voxels to process to be 1 or True and everything else
             to be False or 0 .
         max_batch_size (int): the maximum size per batch. Lower this to decrease memory usage. Increasing it might
-            increase performance.
+            increase performance. Defaults to 50000.
         cl_device_ind (int or list): the index of the CL device to use. The index is from the list from the function
             get_cl_devices(). This can also be a list of device indices.
     """
@@ -82,6 +82,9 @@ def reconstruct(reconstruction_method, input_filenames, output_dir, mask=None, m
         mask = np.ones(load_nifti(input_filenames[0]).shape[:3])
     elif isinstance(mask, six.string_types):
         mask = mdt.load_brain_mask(mask)
+
+    if max_batch_size is None:
+        max_batch_size = 50000
 
     data_shape = load_nifti(input_filenames[0]).shape
     if mask.shape != data_shape[:3]:

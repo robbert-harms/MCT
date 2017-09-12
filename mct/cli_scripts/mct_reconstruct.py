@@ -5,6 +5,7 @@
 import argparse
 import os
 from argcomplete.completers import FilesCompleter
+from mot import cl_environments
 
 import mct
 from mct.components_loader import list_reconstruction_methods
@@ -22,6 +23,8 @@ class Reconstruct(BasicShellApplication):
 
     def __init__(self):
         super(Reconstruct, self).__init__()
+        self.available_devices = list((ind for ind, env in
+                                       enumerate(cl_environments.CLEnvironmentFactory.smart_device_selection())))
 
     def _get_arg_parser(self, doc_parser=False):
         description = textwrap.dedent(__doc__)
@@ -30,6 +33,8 @@ class Reconstruct(BasicShellApplication):
             mct-reconstruct rSoS {0..15}.nii.gz
             mct-reconstruct STARC {0..15}.nii -m mask.nii -o ./output
             mct-reconstruct STARC {0..15}.nii --kwargs starting_points=weights.nii
+            mct-reconstruct STARC {0..15}.nii --cl-device-ind {0, 1}
+            mct-reconstruct STARC {0..15}.nii --cl-device-ind 0 --max_batch_size 1000
            ''')
         epilog = self._format_examples(doc_parser, examples)
 
@@ -48,6 +53,13 @@ class Reconstruct(BasicShellApplication):
         parser.add_argument('-o', '--output_dir', default=None,
                             help='the output directory, defaults to a subdir in the dir '
                                  'of the first weight.').completer = FilesCompleter()
+
+        parser.add_argument('--cl-device-ind', type=int, nargs='*', choices=self.available_devices,
+                            help="The index of the device we would like to use. This follows the indices "
+                                 "in mdt-list-devices and defaults to the first GPU.")
+
+        parser.add_argument('--max-batch-size', type=int, default=None,
+                            help="The maximum number of voxels to process concurrently.")
 
         parser.add_argument('--kwargs', type=str, nargs='+',
                             help='Optional keyword arguments for the model, provide as <key>=<value> pairs,'
@@ -74,7 +86,8 @@ class Reconstruct(BasicShellApplication):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        mct.reconstruct(method, input_files, output_dir, mask=args.mask)
+        mct.reconstruct(method, input_files, output_dir, mask=args.mask, cl_device_ind=args.cl_device_ind,
+                        max_batch_size=args.max_batch_size)
 
 
 def get_keyword_args(kwargs, base_dir):
