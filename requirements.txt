@@ -1,0 +1,7 @@
+mdt>=0.10.4
+mot>=0.3.6
+numpy
+six
+nibabel
+pyyaml
+argcomplete
