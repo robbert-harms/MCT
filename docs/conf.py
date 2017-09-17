@@ -219,7 +219,7 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
     'show_powered_by': False,
-    'description': "Maastricht Coil-combine Toolbox",
+    'description': "MRI Coil-combine Toolbox",
     'logo_name': True,
     'sidebar_collapse': True,
     'fixed_sidebar': False,
@@ -352,7 +352,7 @@ latex_elements = {
 # [howto/manual]).
 latex_documents = [
     ('index', 'mct.tex',
-     u'Maastricht Coil-combine Toolbox',
+     u'MRI Coil-combine Toolbox',
      u'Robbert Harms', 'manual'),
 ]
 
@@ -398,7 +398,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'mct',
-     u'Maastricht Coil-combine Toolbox',
+     u'MRI Coil-combine Toolbox',
      u'Robbert Harms',
      'mct',
      'One line description of project.',

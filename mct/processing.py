@@ -71,7 +71,8 @@ class ReconstructionProcessor(SimpleModelProcessor):
         self._logger = logging.getLogger('coil_combine')
 
     def __del__(self):
-        self._input_reader.terminate()
+        if hasattr(self, '_input_reader'):
+            self._input_reader.terminate()
 
     def finalize(self):
         self._input_queue.put(None)

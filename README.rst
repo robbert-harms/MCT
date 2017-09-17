@@ -1,7 +1,7 @@
-###############################
-Maastricht Coil-combine Toolbox
-###############################
-The Maastricht Coil-combine Toolbox, MCT, is a small toolbox for combining the channels of a multi-channel MRI acquisition.
+########################
+MRI Coil-combine Toolbox
+########################
+The MRI Coil-combine Toolbox, MCT, is a small toolbox for combining the channels of a multi-channel MRI acquisition.
 Where possible, this toolbox uses GPU accelerated routines to speed-up the processing.
 For example, the weights of the STARC (STAbility-weighted Rf-coil Combination) reconstruction model are fitted using the GPU or using multi-threaded CPU.
 At the moment MCT only supports rSoS (root Sum Of Squares) and STARC reconstruction, with plans for adding rCovSoS and others.
@@ -15,7 +15,7 @@ Summary
 * command line and python interface
 * Free Open Source Software: LGPL v3 license
 * Python and OpenCL based
-* Full documentation: https://maastricht-coil-combine-toolbox.readthedocs.io/
+* Full documentation: https://mct.readthedocs.io/
 * Project home: https://github.com/cbclab/MCT
 * Uses the `GitLab workflow <https://docs.gitlab.com/ee/workflow/gitlab_flow.html>`_
 * Tags: MRI, coil-combine, image reconstruction, opencl, python

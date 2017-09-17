@@ -1,7 +1,7 @@
 ##########
 Developers
 ##########
-The Maastricht Diffusion Toolbox is a coil-combine meant for MRI reconstruction.
+The MRI Coil-combine Toolbox is a coil-combine toolbox meant for MRI reconstruction.
 Software development by Robbert Harms, under the (Phd) supervision of Alard Roebroeck, at Maastricht University.
 
 List of contributors:

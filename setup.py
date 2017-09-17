@@ -28,7 +28,7 @@ requirements_tests = load_requirements('requirements_tests.txt')
 long_description = readme
 if sys.argv and len(sys.argv) > 3 and sys.argv[2] == 'debianize':
     long_description = dedent("""
-        The Maastricht Coil-combine Toolbox
+        The MRI Coil-combine Toolbox
     """).lstrip()
 
 def load_entry_points():
@@ -56,7 +56,7 @@ def load_entry_points():
 info_dict = dict(
     name='mct',
     version=ver_dic["VERSION"],
-    description='The Maastricht Coil-combine Toolbox',
+    description='The MRI Coil-combine Toolbox',
     long_description=long_description,
     author="Robbert Harms",
     author_email="robbert.harms@maastrichtuniversity.nl",

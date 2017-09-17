@@ -48,7 +48,7 @@ class rCovSoS(ReconstructionMethod):
             voxels = batch[:, ind, :]
             voxels = np.conj(voxels).T
             batch_noise_weighted = np.abs(np.conj(np.dot(self._inverse_covar_tr, voxels)).T)
-            
+
             output[:, ind] = np.sqrt(np.sum(batch_noise_weighted ** 2, axis=1))
 
         return {'reconstruction': output}
