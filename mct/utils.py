@@ -1,6 +1,4 @@
 import os
-from contextlib import contextmanager
-import time
 import nibabel as nib
 import six
 
@@ -10,7 +8,6 @@ import mot
 import numpy as np
 import mdt
 import collections
-from multiprocessing import Process
 from mdt.nifti import nifti_filepath_resolution, unzip_nifti
 from mdt.utils import split_image_path
 
@@ -20,71 +17,6 @@ __date__ = '2017-09-09'
 __maintainer__ = 'Robbert Harms'
 __email__ = 'robbert.harms@maastrichtuniversity.nl'
 __licence__ = 'LGPL v3'
-
-
-class BufferedInputReader(Process):
-
-    def __init__(self, input_niftis, input_queue, in_reading_queue, output_queue):
-        """This processor reads in parts of the nifti files and buffers it into a queue.
-
-        The idea is that while some of the other voxels are being optimized, we can already load in the next batch
-        since IO may take some time. To do so, we use the multiprocessing library from Python and implement two queues,
-        one (the input queue) for sending the indices of the voxels we want and the second (the output queue) for
-        retrieving the image data of those indices.
-
-        Args:
-            input_niftis (list of nibabel niftis): the list of input nifti files
-            input_queue (multiprocessing.queue): the input queue listening for input volume indices. Send None to
-                this queue to stop the process.
-            in_reading_queue (multiprocessing.queue): the queue used for the input reader to communicate it is
-                reading the next batch. The reader will push a value to this queue to signal that it is
-                in the process of reading the next batch. It will pop the value after it pushed the new batch to the
-                output queue.
-            output_queue (multiprocessing.queue): the queue to send the output batch data to.
-        """
-        super(BufferedInputReader, self).__init__()
-        self._input_niftis = input_niftis
-
-        self._input_queue = input_queue
-        self._in_reading_queue = in_reading_queue
-        self._output_queue = output_queue
-
-        self._nmr_channels = len(self._input_niftis)
-
-        if len(self._input_niftis[0].shape) < 4:
-            self._nmr_volumes = 1
-        else:
-            self._nmr_volumes = self._input_niftis[0].shape[3]
-        self._input_dtype = self._input_niftis[0].get_data_dtype()
-
-    def run(self):
-        while True:
-            volume_indices = self._input_queue.get()
-
-            with self._hold_in_reading_queue():
-                if volume_indices is None:
-                    return
-
-                index_tuple = tuple(volume_indices[..., ind] for ind in range(3))
-                batch = np.zeros((volume_indices.shape[0], self._nmr_volumes, self._nmr_channels),
-                                 dtype=self._input_dtype)
-
-                for channel_ind, nifti in enumerate(self._input_niftis):
-                    data = nifti.get_data()[index_tuple]
-                    if len(data.shape) == 1:
-                        data = data[..., None]
-                    batch[..., channel_ind] = data
-
-                self._output_queue.put(batch)
-
-                while self._output_queue.empty():
-                    time.sleep(0.01)
-
-    @contextmanager
-    def _hold_in_reading_queue(self):
-        self._in_reading_queue.put(True)
-        yield
-        self._in_reading_queue.get()
 
 
 class UnzippedNiftis(collections.Sequence):
@@ -199,7 +131,7 @@ def combine_weighted_sum(input_channels, weights, output_filename):
         output += weights[..., ind, None] * load_nifti(input_channel).get_data()
 
     header = load_nifti(input_channels[0]).get_header()
-    mdt.write_nifti(output, header, output_filename)
+    mdt.write_nifti(output, output_filename, header)
 
 
 def extract_timepoints(input_files, timepoints, output_dir):
@@ -220,14 +152,11 @@ def extract_timepoints(input_files, timepoints, output_dir):
     elif timepoints == 'odd':
         timepoints = range(1, nmr_timepoints, 2)
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     for filename in input_files:
         full_name = nifti_filepath_resolution(filename)
         nifti = load_nifti(full_name)
         output_path = output_dir + '/' + ''.join(split_image_path(full_name)[1:])
-        mdt.write_nifti(nifti.get_data()[..., timepoints], nifti.get_header(), output_path)
+        mdt.write_nifti(nifti.get_data()[..., timepoints], output_path, nifti.get_header())
 
 
 def load_nifti(nifti_volume):
@@ -264,5 +193,5 @@ def split_write_volumes(input_file, output_dir, axis=-1):
     for ind in range(data.shape[axis]):
         index = [slice(None)] * len(data.shape)
         index[axis] = ind
-        mdt.write_nifti(data[index], header, '{}/{}_{}.nii'.format(output_dir, basename, ind))
+        mdt.write_nifti(data[index], '{}/{}_{}.nii'.format(output_dir, basename, ind), header)
 

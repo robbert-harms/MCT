@@ -1,7 +1,6 @@
 import logging
-from multiprocessing import Queue
-
-from mct.utils import BufferedInputReader, UnzippedNiftis
+import numpy as np
+from mct.utils import UnzippedNiftis
 from mdt.nifti import get_all_image_data
 from mdt.processing_strategies import SimpleModelProcessor
 from mdt.utils import create_roi
@@ -61,23 +60,8 @@ class ReconstructionProcessor(SimpleModelProcessor):
                                                       output_dir, output_dir + '/tmp', True)
 
         self._reconstruction_method = reconstruction_method
-
-        self._input_queue = Queue()
-        self._in_reading_queue = Queue()
-        self._output_queue = Queue()
-        self._input_reader = BufferedInputReader(self._input_niftis, self._input_queue,
-                                                 self._in_reading_queue, self._output_queue)
-        self._input_reader.start()
+        self._batch_loader = BatchLoader(self._input_niftis)
         self._logger = logging.getLogger('coil_combine')
-
-    def __del__(self):
-        if hasattr(self, '_input_reader'):
-            self._input_reader.terminate()
-
-    def finalize(self):
-        self._input_queue.put(None)
-        self._input_reader.join()
-        super(ReconstructionProcessor, self).finalize()
 
     def combine(self):
         super(ReconstructionProcessor, self).combine()
@@ -86,23 +70,49 @@ class ReconstructionProcessor(SimpleModelProcessor):
 
     def _process(self, roi_indices, next_indices=None):
         volume_indices = self._volume_indices[roi_indices, :]
-
-        next_volume_indices = None
-        if next_indices is not None:
-            next_volume_indices = self._volume_indices[next_indices]
-
-        if self._output_queue.empty() and self._input_queue.empty() and self._in_reading_queue.empty():
-            self._logger.info('Loading first batch.')
-            self._input_queue.put(volume_indices)
-
-
-        import time
-        time.sleep(1)
-
-
-        batch = self._output_queue.get()
-        self._input_queue.put(next_volume_indices)
-
+        batch = self._batch_loader.load_batch(volume_indices)
         if batch.size > 0:
             results = self._reconstruction_method.reconstruct(batch, volume_indices)
             self._write_volumes(results, roi_indices, self._tmp_storage_dir)
+
+
+class BatchLoader(object):
+
+    def __init__(self, input_niftis):
+        """Helper class for loading the batches.
+
+        Since this batch loader makes use of memory mapping, for optimal performance, make sure that the input
+        niftis are unzipped.
+
+        Args:
+            input_niftis (list of nibabel niftis): the list of input nifti files
+        """
+        self._input_niftis = input_niftis
+        self._nmr_channels = len(self._input_niftis)
+        if len(self._input_niftis[0].shape) < 4:
+            self._nmr_volumes = 1
+        else:
+            self._nmr_volumes = self._input_niftis[0].shape[3]
+        self._input_dtype = self._input_niftis[0].get_data_dtype()
+
+    def load_batch(self, volume_indices):
+        """Load the batch at the given indices.
+
+        Args:
+            volume_indices (ndarray): a volume with the indices of the next voxels to load
+
+        Returns:
+            ndarray: a array of shape (v, t, c) with v the number of voxels, t the number of time serie volumes
+                and c the number of channels.
+        """
+        index_tuple = tuple(volume_indices[..., ind] for ind in range(3))
+        batch = np.zeros((volume_indices.shape[0], self._nmr_volumes, self._nmr_channels),
+                         dtype=self._input_dtype)
+
+        for channel_ind, nifti in enumerate(self._input_niftis):
+            data = nifti.get_data()[index_tuple]
+            if len(data.shape) == 1:
+                data = data[..., None]
+            batch[..., channel_ind] = data
+
+        return batch
