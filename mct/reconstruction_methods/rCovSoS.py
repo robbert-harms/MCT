@@ -1,8 +1,7 @@
 from textwrap import dedent
 import numpy as np
-import numpy.linalg as linalg
 import six
-
+from numpy.linalg import inv, cholesky
 from mct.processing import ReconstructionMethod
 from mct.utils import load_nifti
 
@@ -16,7 +15,7 @@ __licence__ = 'LGPL v3'
 class rCovSoS(ReconstructionMethod):
 
     command_line_info = dedent('''
-        Root of the Covariance Sum Of Squares reconstruction [Tryantafullyi or whatever 2016].
+        Root of the Covariance Sum Of Squares reconstruction [Triantafyllou 2016 and Pruesmann 2008].
 
         Required args:
             Covariance noise matrix (complex square matrix with dimension (N, N) with N equal to the number of channels)
@@ -39,16 +38,11 @@ class rCovSoS(ReconstructionMethod):
             covariance_noise_matrix = load_nifti(covariance_noise_matrix).get_data()
         else:
             covariance_noise_matrix = covariance_noise_matrix
-        self._inverse_covar_tr = np.transpose(linalg.inv(linalg.cholesky(covariance_noise_matrix)))
+        self._inverse_covar = cholesky(inv(covariance_noise_matrix))
 
     def reconstruct(self, batch, volume_indices):
         output = np.zeros(batch.shape[:2])
-
         for ind in range(batch.shape[1]):
-            voxels = batch[:, ind, :]
-            voxels = np.conj(voxels).T
-            batch_noise_weighted = np.abs(np.conj(np.dot(self._inverse_covar_tr, voxels)).T)
-
-            output[:, ind] = np.sqrt(np.sum(batch_noise_weighted ** 2, axis=1))
-
+            voxels_covariance_weighted = np.dot(batch[:, ind, :], self._inverse_covar)
+            output[:, ind] = np.sqrt(np.sum(np.abs(voxels_covariance_weighted)**2, axis=1))
         return {'reconstruction': output}

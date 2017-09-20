@@ -44,12 +44,13 @@ class STARC(ReconstructionMethod):
             starting_points (ndarray or str): optional, the set of weights to use as a starting point
                 for the fitting routine.
         """
-        self._optimizer = Powell(patience=2)
         self._starting_points = starting_points
         if isinstance(self._starting_points, six.string_types):
             self._starting_points = mdt.load_nifti(starting_points).get_data()
 
     def reconstruct(self, batch, volume_indices):
+        self._optimizer = Powell(patience=2)
+
         starting_weights = None
         if self._starting_points is not None:
             starting_weights = self._starting_points[np.split(volume_indices, 3, axis=1)]

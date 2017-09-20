@@ -159,6 +159,33 @@ def extract_timepoints(input_files, timepoints, output_dir):
         mdt.write_nifti(nifti.get_data()[..., timepoints], output_path, nifti.get_header())
 
 
+def calculate_noise_covariance_matrix(input_data, normalize=False):
+    """Obtain noise covariance matrix from raw data.
+
+    The input data (the raw data) is expected to be in complex k-space or x-space.
+
+    This function supports 1d, 2d, 3d noise volumes as input and assumes that the noise data of the channels are in the
+    last dimension.
+
+    Args:
+        input_data (str): the input data
+        normalise (bool): If True, then the calculated noise matrix will be normalised.
+
+    Returns:
+        ndarray: a square matrix of the number of channels
+    """
+    nmr_elements_per_channel = np.prod(input_data.shape[:-1])
+
+    data = np.reshape(input_data, (-1, input_data.shape[-1]))
+    noise_matrix = np.dot(np.conj(data.T), data)/(nmr_elements_per_channel * input_data.shape[-1])
+
+    if normalize:
+        scaled_data = data / np.sqrt(np.diag(noise_matrix))
+        noise_matrix = np.dot(np.conj(scaled_data.T), scaled_data)/(nmr_elements_per_channel * input_data.shape[-1])
+
+    return noise_matrix
+
+
 def load_nifti(nifti_volume):
     """Load and return a nifti file.
 
