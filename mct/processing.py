@@ -1,4 +1,6 @@
 import logging
+from multiprocessing.pool import Pool
+
 import numpy as np
 from mct.utils import UnzippedNiftis
 from mdt.nifti import get_all_image_data
@@ -105,14 +107,50 @@ class BatchLoader(object):
             ndarray: a array of shape (v, t, c) with v the number of voxels, t the number of time serie volumes
                 and c the number of channels.
         """
-        index_tuple = tuple(volume_indices[..., ind] for ind in range(3))
-        batch = np.zeros((volume_indices.shape[0], self._nmr_volumes, self._nmr_channels),
-                         dtype=self._input_dtype)
+        # index_tuple = tuple(volume_indices[..., ind] for ind in range(3))
+        # batch = np.zeros((volume_indices.shape[0], self._nmr_volumes, self._nmr_channels),
+        #                  dtype=self._input_dtype)
 
-        for channel_ind, nifti in enumerate(self._input_niftis):
-            data = nifti.get_data()[index_tuple]
-            if len(data.shape) == 1:
-                data = data[..., None]
-            batch[..., channel_ind] = data
+        # for channel_ind, nifti in enumerate(self._input_niftis):
+        #     data = nifti.dataobj
+        #
+        #     for lin_ind, slice_ind in enumerate(np.unique(index_tuple[0])):
+        #         index_tuple_2d = volume_indices[volume_indices[:, 0] == slice_ind][:, 1:]
+        #         data_slice = data[int(slice_ind), :, :, :]
+        #         print(lin_ind, slice_ind)
 
-        return batch
+        with Pool() as pool:
+            result = pool.starmap(read_from_nifti,
+                                  [(nifti.dataobj, volume_indices, self._nmr_volumes, self._input_dtype)
+                                   for channel_ind, nifti in enumerate(self._input_niftis)])
+        return np.stack(result, axis=-1)
+        # for channel_ind, nifti in enumerate(self._input_niftis):
+        #     batch[..., channel_ind] = read_from_nifti(nifti.dataobj, volume_indices,
+        #                                               self._nmr_volumes, self._input_dtype)
+
+            # data = nifti.dataobj
+            # for lin_ind, vol_ind in enumerate(volume_indices):
+            #     batch[lin_ind, :, channel_ind] = data[int(vol_ind[0]), int(vol_ind[1]), int(vol_ind[2])]
+
+
+        # exit(0)
+
+            # if len(data.shape) == 1:
+            #     data = data[..., None]
+            # batch[..., channel_ind] = data
+            #
+        # for channel_ind, nifti in enumerate(self._input_niftis):
+        #     data = nifti.get_data()[index_tuple]
+        #     if len(data.shape) == 1:
+        #         data = data[..., None]
+        #     batch[..., channel_ind] = data
+
+        # return batch
+
+
+def read_from_nifti(data, volume_indices, nmr_volumes, dtype):
+    """Small helping routine """
+    batch = np.zeros((volume_indices.shape[0], nmr_volumes), dtype=dtype)
+    for lin_ind, vol_ind in enumerate(volume_indices):
+        batch[lin_ind, :] = data[int(vol_ind[0]), int(vol_ind[1]), int(vol_ind[2])]
+    return batch
