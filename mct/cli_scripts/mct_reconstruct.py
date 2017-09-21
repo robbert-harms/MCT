@@ -5,6 +5,8 @@
 import argparse
 import os
 from argcomplete.completers import FilesCompleter
+
+from mct.utils import get_cl_devices
 from mot import cl_environments
 
 import mct
@@ -31,10 +33,9 @@ class Reconstruct(BasicShellApplication):
 
         examples = textwrap.dedent('''
             mct-reconstruct rSoS {0..15}.nii.gz
-            mct-reconstruct STARC {0..15}.nii -m mask.nii -o ./output
+            mct-reconstruct STARC {0..15}.nii -o ./output
             mct-reconstruct STARC {0..15}.nii --kwargs starting_points=weights.nii
             mct-reconstruct STARC {0..15}.nii --cl-device-ind {0, 1}
-            mct-reconstruct STARC {0..15}.nii --cl-device-ind 0 --max_batch_size 1000
            ''')
         epilog = self._format_examples(doc_parser, examples)
 
@@ -47,9 +48,6 @@ class Reconstruct(BasicShellApplication):
         parser.add_argument('input_files', type=str, nargs='+',
                             help='the input channels')
 
-        parser.add_argument('-m', '--mask', default=None,
-                            help='optional mask to reconstruct only the specified voxels.').completer = FilesCompleter()
-
         parser.add_argument('-o', '--output_dir', default=None,
                             help='the output directory, defaults to a subdir in the dir '
                                  'of the first weight.').completer = FilesCompleter()
@@ -57,9 +55,6 @@ class Reconstruct(BasicShellApplication):
         parser.add_argument('--cl-device-ind', type=int, nargs='*', choices=self.available_devices,
                             help="The index of the device we would like to use. This follows the indices "
                                  "in mdt-list-devices and defaults to the first GPU.")
-
-        parser.add_argument('--max-batch-size', type=int, default=None,
-                            help="The maximum number of voxels to process concurrently.")
 
         parser.add_argument('--kwargs', type=str, nargs='+',
                             help='Optional keyword arguments for the model, provide as <key>=<value> pairs,'
@@ -71,7 +66,11 @@ class Reconstruct(BasicShellApplication):
             raise ValueError('The given model {} can not be found.'.format(args.method_name))
 
         method_kwargs = get_keyword_args(args.kwargs, os.path.realpath(''))
-        method = mct.load_reconstruction_method(args.method_name, **method_kwargs)
+
+        cl_environments = None
+        if args.cl_device_ind is not None:
+            cl_environments = [get_cl_devices()[ind] for ind in args.cl_device_ind]
+        method_kwargs['cl_environments'] = cl_environments
 
         input_files = get_input_files(args.input_files, os.path.realpath(''))
 
@@ -86,8 +85,8 @@ class Reconstruct(BasicShellApplication):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        mct.reconstruct(method, input_files, output_dir, mask=args.mask, cl_device_ind=args.cl_device_ind,
-                        max_batch_size=args.max_batch_size)
+        method = mct.load_reconstruction_method(args.method_name, **method_kwargs)
+        method.reconstruct(input_files, output_dir)
 
 
 def get_keyword_args(kwargs, base_dir):

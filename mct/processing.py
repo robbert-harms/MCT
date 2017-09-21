@@ -1,9 +1,9 @@
 import logging
+from contextlib import contextmanager
 import numpy as np
+import collections
+import mdt
 from mct.utils import UnzippedNiftis
-from mdt.nifti import get_all_image_data
-from mdt.processing_strategies import SimpleModelProcessor
-from mdt.utils import create_roi
 
 
 __author__ = 'Robbert Harms'
@@ -14,24 +14,25 @@ __licence__ = 'LGPL v3'
 
 
 class ReconstructionMethod(object):
-    """The reconstruction method encodes how to reconstruct the multiple channels.
+    """A reconstruction method reconstructs volume(s) from multiple channels."""
 
-    This works together with the :class:`~mct.reconstruction.ReconstructionProcessor` to reconstruct your images.
-    The processing worker encodes how to load the input, the reconstruction method encodes how to reconstruct.
-    """
+    command_line_info = '''
+        No info defined for this method.
+    '''
 
     @property
     def name(self):
         """The name of this method for use in output files."""
         raise NotImplementedError()
 
-    def reconstruct(self, batch, volume_indices):
-        """Reconstruct the given batch which contains voxels at the specified indices.
+    def reconstruct(self, channels, output_directory):
+        """Reconstruct the given channels according and place the result in a subdirectory in the given directory.
 
         Args:
-            batch (ndarray): a 3d matrix with (v, t, c) for voxels, timeseries, channels.
-            volume_indices (ndarray): a 2d matrix with for every voxel in the batch the 3d location of that
-                voxel in the original dimensions.
+            channels (list): the list of input nifti files, one for each channel element. Every nifti file
+                should be a 4d matrix with on the 4th dimension all the time series. The length of this list
+                should equal the number of input channels.
+            output_directory (str): the location for the output files
 
         Returns:
              dict: the set of results from this reconstruction method
@@ -39,80 +40,97 @@ class ReconstructionMethod(object):
         raise NotImplementedError()
 
 
-class ReconstructionProcessor(SimpleModelProcessor):
+class AbstractReconstructionMethod(ReconstructionMethod):
 
-    def __init__(self, reconstruction_method, input_filenames, output_dir, mask):
-        """Creates a processing routine for the coil combine reconstruction.
+    def __init__(self, cl_environments=None):
+        self._cl_environments = cl_environments
+        self._logger = logging.getLogger(__name__)
+        self._output_subdir = self.__class__.__name__
 
-        This class takes care of loading the multiple channels data (in batches) and applying the given model on that
-        for reconstruction.
+    def reconstruct(self, channels, output_directory, recalculate=False):
+        output_subdir = output_directory + '/' + self._output_subdir
+        niftis = UnzippedNiftis(channels, output_subdir)
+        combined = self._reconstruct(niftis, output_subdir)
 
-        Args:
-            reconstruction_method (ReconstructionMethod): the method to use for reconstructing the data
-            input_filenames (list): the list of input nifti files, one for each channel. Every nifti file
-                is a 4d matrix with on the 4th dimension the time series for that channel
-            output_dir (str): the output location
-            mask (str): a 3d masking matrix with the voxels to use in the reconstruction set on True
-        """
-        self._input_niftis = UnzippedNiftis(input_filenames, output_dir)
-
-        super(ReconstructionProcessor, self).__init__(mask, self._input_niftis[0].get_header(),
-                                                      output_dir, output_dir + '/tmp', True)
-
-        self._reconstruction_method = reconstruction_method
-        self._batch_loader = BatchLoader(self._input_niftis)
-        self._logger = logging.getLogger('coil_combine')
-
-    def combine(self):
-        super(ReconstructionProcessor, self).combine()
-        self._combine_volumes(self._output_dir, self._tmp_storage_dir, self._nifti_header)
-        return create_roi(get_all_image_data(self._output_dir), self._mask)
-
-    def _process(self, roi_indices, next_indices=None):
-        volume_indices = self._volume_indices[roi_indices, :]
-        batch = self._batch_loader.load_batch(volume_indices)
-        if batch.size > 0:
-            results = self._reconstruction_method.reconstruct(batch, volume_indices)
-            self._write_volumes(results, roi_indices, self._tmp_storage_dir)
-
-
-class BatchLoader(object):
-
-    def __init__(self, input_niftis):
-        """Helper class for loading the batches.
-
-        Since this batch loader makes use of memory mapping, for optimal performance, make sure that the input
-        niftis are unzipped.
-
-        Args:
-            input_niftis (list of nibabel niftis): the list of input nifti files
-        """
-        self._input_niftis = input_niftis
-        self._nmr_channels = len(self._input_niftis)
-        if len(self._input_niftis[0].shape) < 4:
-            self._nmr_volumes = 1
+        if isinstance(combined, collections.Mapping):
+            for name, data in combined.items():
+                mdt.write_nifti(data, output_subdir + '/{}.nii.gz'.format(name), niftis[0].get_header())
         else:
-            self._nmr_volumes = self._input_niftis[0].shape[3]
-        self._input_dtype = self._input_niftis[0].get_data_dtype()
+            mdt.write_nifti(combined, output_subdir + '/reconstruction.nii.gz', niftis[0].get_header())
 
-    def load_batch(self, volume_indices):
-        """Load the batch at the given indices.
+    def _reconstruct(self, input_niftis, output_directory):
+        """To be overwritten by the implementing class."""
+        raise NotImplementedError()
+
+
+class SliceBySliceReconstructionMethod(AbstractReconstructionMethod):
+
+    def __init__(self, cl_environments=None):
+        super(SliceBySliceReconstructionMethod, self).__init__(cl_environments=cl_environments)
+        self._slicing_axis = 2
+
+    def _reconstruct(self, input_niftis, output_directory):
+        nifti_shape = input_niftis[0].shape
+        slice_results = []
+
+        logging_enabled = True
+        for z_slice in range(nifti_shape[2]):
+            self._logger.info('Processing slice {} of {}'.format(z_slice, nifti_shape[2]))
+
+            slice_data = self._get_slice_all_channels(input_niftis, z_slice)
+
+            if logging_enabled:
+                slice_results.append(self._reconstruct_slice(slice_data, z_slice))
+                logging_enabled = False
+            else:
+                with self._with_logging_to_debug():
+                    slice_results.append(self._reconstruct_slice(slice_data, z_slice))
+
+        self._logger.info('Computed all slices, now assembling results.')
+
+        if isinstance(slice_results[0], collections.Mapping):
+            final_results = {}
+            for key in slice_results[0]:
+                final_results[key] = np.stack([el[key] for el in slice_results], axis=self._slicing_axis)
+            return final_results
+
+        return np.stack(slice_results, axis=self._slicing_axis)
+
+    @contextmanager
+    def _with_logging_to_debug(self):
+        handlers = logging.getLogger('mot').handlers
+        for handler in handlers:
+            handler.setLevel(logging.WARNING)
+        yield
+        for handler in handlers:
+            handler.setLevel(logging.INFO)
+
+    def _reconstruct_slice(self, slice_data, slice_index):
+        """Reconstruct the given slice.
 
         Args:
-            volume_indices (ndarray): a volume with the indices of the next voxels to load
+            slice_data (ndarray): a 4d array with the first two dimensions the remaining voxel locations and
+                third the timeseries and finally the channels
+            slice_index (int): the slice index
+        """
+        raise NotImplementedError()
+
+    def _get_slice_all_channels(self, input_niftis, slice_index):
+        """Get the requested slice over each of the input niftis.
+
+        Args:
+            input_niftis (list of nifti): the list of nifti file objects
+            slice_index (int): the slice index we want
+            axis (Optional[Int]): the axis over which to loop
 
         Returns:
-            ndarray: a array of shape (v, t, c) with v the number of voxels, t the number of time serie volumes
-                and c the number of channels.
+            ndarray: a 4d array with the first two dimensions the remaining voxel locations and then the timeseries
+                and then the channels
         """
-        index_tuple = tuple(volume_indices[..., ind] for ind in range(3))
-        batch = np.zeros((volume_indices.shape[0], self._nmr_volumes, self._nmr_channels),
-                         dtype=self._input_dtype)
-
-        for channel_ind, nifti in enumerate(self._input_niftis):
-            data = nifti.get_data()[index_tuple]
-            if len(data.shape) == 1:
-                data = data[..., None]
-            batch[..., channel_ind] = data
-
-        return batch
+        if self._slicing_axis == 0:
+            slices = [nifti.dataobj[int(slice_index), :, :] for nifti in input_niftis]
+        elif self._slicing_axis == 1:
+            slices = [nifti.dataobj[:, int(slice_index), :] for nifti in input_niftis]
+        else:
+            slices = [nifti.dataobj[:, :, int(slice_index)] for nifti in input_niftis]
+        return np.stack(slices, axis=-1)

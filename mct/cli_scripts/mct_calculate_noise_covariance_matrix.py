@@ -59,9 +59,6 @@ class EstimateNoiseCovMatrix(BasicShellApplication):
 
         noise_covar = calculate_noise_covariance_matrix(input_data, normalize=args.normalize)
 
-        if not os.path.exists(os.path.dirname(output_file)):
-            os.makedirs(os.path.dirname(output_file))
-
         mdt.write_nifti(noise_covar, header, output_file)
 
 

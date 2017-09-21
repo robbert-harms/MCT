@@ -2,11 +2,9 @@ from textwrap import dedent
 
 import six
 from mot.model_building.parameter_functions.transformations import CosSqrClampTransform
-
-from mct.utils import calculate_tsnr
 from mot.model_building.model_builders import ParameterTransformedModel
 
-from mct.processing import ReconstructionMethod
+from mct.processing import SliceBySliceReconstructionMethod
 from mot import Powell
 import mdt
 import numpy as np
@@ -22,7 +20,7 @@ __email__ = 'robbert.harms@maastrichtuniversity.nl'
 __licence__ = 'LGPL v3'
 
 
-class STARC(ReconstructionMethod):
+class STARC(SliceBySliceReconstructionMethod):
 
     command_line_info = dedent('''
         The STARC (STAbility-weighted Rf-coil Combination) method [1] reconstructs EPI acquisitions using a weighted sum of the input channels. The weights are chosen such that the reconstruction has optimal tSNR.
@@ -37,35 +35,46 @@ class STARC(ReconstructionMethod):
             * Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
     ''')
 
-    def __init__(self, *args, starting_points=None, **kwargs):
+    def __init__(self, starting_points=None, cl_environments=None):
         """Reconstruct the input using the STARC method.
 
         Args:
             starting_points (ndarray or str): optional, the set of weights to use as a starting point
                 for the fitting routine.
         """
+        super(STARC, self).__init__(cl_environments=cl_environments)
+        self._optimizer = Powell(cl_environments=self._cl_environments, patience=2)
         self._starting_points = starting_points
         if isinstance(self._starting_points, six.string_types):
             self._starting_points = mdt.load_nifti(starting_points).get_data()
 
-    def reconstruct(self, batch, volume_indices):
-        self._optimizer = Powell(patience=2)
+    def _reconstruct_slice(self, slice_data, slice_index):
+        nmr_timeseries = slice_data.shape[-2]
+        nmr_channels = slice_data.shape[-1]
 
-        starting_weights = None
-        if self._starting_points is not None:
-            starting_weights = self._starting_points[np.split(volume_indices, 3, axis=1)]
-            starting_weights = np.reshape(starting_weights, (-1, batch.shape[-1]))
+        batch = np.reshape(slice_data, (-1, nmr_timeseries, nmr_channels))
 
-        model = STARCModel(batch, starting_weights=starting_weights)
-        bounded_model = ParameterTransformedModel(model, model.get_parameter_codec())
+        model = STARCModel(batch, starting_weights=self._get_starting_weights(slice_index))
+        constrained_model = ParameterTransformedModel(model, STARCOptimizationCodec(nmr_channels))
 
-        result_struct = self._optimizer.minimize(bounded_model)
-        del starting_weights
+        result_struct = self._optimizer.minimize(constrained_model)
 
         weights = result_struct.get_optimization_result()
         reconstruction = np.sum(batch * weights[:, None, :], axis=2)
 
-        return {'weights': weights, 'reconstruction': reconstruction, 'tSNR': calculate_tsnr(reconstruction)}
+        return {
+            'weights': np.reshape(weights, slice_data.shape[:-2] + (nmr_channels,)),
+            'reconstruction': np.reshape(reconstruction, slice_data.shape[:-2] + (nmr_timeseries,)),
+        }
+
+    def _get_starting_weights(self, slice_index):
+        starting_weights = None
+        if self._starting_points is not None:
+            index = [slice(None)] * 3
+            index[self._slicing_axis] = slice_index
+            starting_weights = self._starting_points[index]
+            starting_weights = np.reshape(starting_weights, (-1, starting_weights.shape[-1]))
+        return starting_weights
 
 
 class STARCModel(OptimizeModelInterface):
@@ -185,50 +194,60 @@ class STARCModel(OptimizeModelInterface):
     def finalize_optimized_parameters(self, parameters):
         return parameters
 
-    def get_parameter_codec(self):
+
+class STARCOptimizationCodec(ParameterCodec):
+
+    def __init__(self, nmr_optimized_weights):
         """Create a parameter codec to enforce the boundary conditions.
 
-        This will limit every weight between [0, 1] and makes sure that the weights sum to one.
+        Parameter codecs are a optimization trick to enforce boundary conditions and to (in some cases) present a
+        smoother optimization landscape to the optimization routine. Before optimization the parameters are transformed
+        from model space to optimization space which is what the optimizer will iteratively try to improve. Just before
+        model evaluation, each point suggested by the optimizer will be decoded back into model space.
+
+        Both the model as well as the optimization routine do not need to know that this transformation takes place.
+
+        This particular codec limits every weight between [0, 1] and makes sure that the weights sum to one.
+
+        Args:
+            nmr_optimized_weights (int): the number of weights we are optimizing
         """
-        model_builder = self
-        param_codec = CosSqrClampTransform()
+        self._nmr_optimized_weights = nmr_optimized_weights
+        self._weights_codec = CosSqrClampTransform()
 
-        class Codec(ParameterCodec):
-            def get_parameter_decode_function(self, function_name='decodeParameters'):
-                decode_transform = param_codec.get_cl_decode()
-                func = '''
-                    void ''' + function_name + '''(mot_data_struct* data_void, mot_float_type* x){
-                        double sum_of_weights = 0;
-                        for(uint i = 0; i < ''' + str(model_builder.nmr_channels) + '''; i++){
-                            x[i] = ''' + decode_transform.create_assignment('x[i]', 0, 1) + ''';    
-                            sum_of_weights += x[i];
-                        }
+    def get_parameter_decode_function(self, function_name='decodeParameters'):
+        decode_transform = self._weights_codec.get_cl_decode()
+        func = '''
+            void ''' + function_name + '''(mot_data_struct* data_void, mot_float_type* x){
+                double sum_of_weights = 0;
+                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
+                    x[i] = ''' + decode_transform.create_assignment('x[i]', 0, 1) + ''';    
+                    sum_of_weights += x[i];
+                }
 
-                        for(uint i = 0; i < ''' + str(model_builder.nmr_channels) + '''; i++){
-                            x[i] = x[i] / sum_of_weights;
-                        }
-                    } 
-                '''
-                return func
+                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
+                    x[i] = x[i] / sum_of_weights;
+                }
+            } 
+        '''
+        return func
 
-            def get_parameter_encode_function(self, function_name='encodeParameters'):
-                encode_transform = param_codec.get_cl_encode()
-                func = '''
-                    void ''' + function_name + '''(mot_data_struct* data_void, mot_float_type* x){
-                        double sum_of_weights = 0;
-                        for(uint i = 0; i < ''' + str(model_builder.nmr_channels) + '''; i++){    
-                            sum_of_weights += x[i];
-                        }
+    def get_parameter_encode_function(self, function_name='encodeParameters'):
+        encode_transform = self._weights_codec.get_cl_encode()
+        func = '''
+            void ''' + function_name + '''(mot_data_struct* data_void, mot_float_type* x){
+                double sum_of_weights = 0;
+                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){    
+                    sum_of_weights += x[i];
+                }
 
-                        for(uint i = 0; i < ''' + str(model_builder.nmr_channels) + '''; i++){
-                            x[i] = x[i] / sum_of_weights;
-                        }
+                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
+                    x[i] = x[i] / sum_of_weights;
+                }
 
-                        for(uint i = 0; i < ''' + str(model_builder.nmr_channels) + '''; i++){
-                            x[i] = ''' + encode_transform.create_assignment('x[i]', 0, 1) + ''';
-                        }
-                    } 
-                '''
-                return func
-
-        return Codec()
+                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
+                    x[i] = ''' + encode_transform.create_assignment('x[i]', 0, 1) + ''';
+                }
+            } 
+        '''
+        return func

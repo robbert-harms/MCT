@@ -1,7 +1,7 @@
-########################
-MRI Coil-combine Toolbox
-########################
-The MRI Coil-combine Toolbox, MCT, is a small toolbox for combining the channels of a multi-channel MRI acquisition.
+############################
+MRI Coil-reconstruct Toolbox
+############################
+The MRI Coil-reconstruct Toolbox, MCT, is a small toolbox for combining the channels of a multi-channel MRI acquisition.
 Where possible, this toolbox uses GPU accelerated routines to speed-up the processing.
 For example, the weights of the STARC (STAbility-weighted Rf-coil Combination) reconstruction model are fitted using the GPU or using multi-threaded CPU.
 At the moment MCT only supports rSoS (root Sum Of Squares) and STARC reconstruction, with plans for adding rCovSoS and others.
@@ -18,12 +18,13 @@ Summary
 * Full documentation: https://mct.readthedocs.io/
 * Project home: https://github.com/cbclab/MCT
 * Uses the `GitLab workflow <https://docs.gitlab.com/ee/workflow/gitlab_flow.html>`_
-* Tags: MRI, coil-combine, image reconstruction, opencl, python
+* Tags: MRI, coil-reconstruct, image reconstruction, opencl, python
 
 
 *************
 Fitting STARC
 *************
+STARC [1] is a method of combining multiple volumes using a iterative optimization process.
 You can use the following command for combining all your channels using the STARC reconstruction method:
 
 .. code-block:: console
@@ -39,6 +40,11 @@ If you only want to use certain time points of your data, please extract these t
     $ mct-extract-timepoints {0..15}.nii -t odd -o ./output_folder
 
 and then reconstruct your data based on those extracted timepoints.
+
+
+References:
+===========
+    1) Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
 
 
 ************************

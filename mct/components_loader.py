@@ -1,6 +1,4 @@
-from mct.reconstruction_methods.STARC import STARC
-from mct.reconstruction_methods.rSoS import rSoS
-from mct.reconstruction_methods.rCovSoS import rCovSoS
+from mct.reconstruction_methods import STARC, rSoS, rCovSoS
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'

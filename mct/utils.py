@@ -196,7 +196,7 @@ def load_nifti(nifti_volume):
         nifti_volume (string): The filename of the volume to use.
 
     Returns:
-        :class:`nibabel.nifti1.Nifti1Image`
+        :class:`nibabel.spatialimages.SpatialImage`
     """
     path = nifti_filepath_resolution(nifti_volume)
     return nib.load(path)
