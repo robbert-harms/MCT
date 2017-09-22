@@ -21,7 +21,7 @@ class ReconstructionMethod(object):
     '''
 
     def reconstruct(self, output_directory):
-        """Reconstruct the given channels according and place the result in a subdirectory in the given directory.
+        """Reconstruct the given channels and place the result in a subdirectory in the given directory.
 
         Args:
             output_directory (str): the location for the output files
@@ -35,12 +35,12 @@ class ReconstructionMethod(object):
 class SliceBySliceReconstructionMethod(ReconstructionMethod):
 
     def __init__(self, channels, **kwargs):
-        """Create a basic reconstruction method initialized with the given data and setttings.
+        """Create a basic reconstruction method initialized with the given data and settings.
 
         Args:
             channels (list): the list of input nifti files, one for each channel element. Every nifti file
-                    should be a 4d matrix with on the 4th dimension all the time series. The length of this list
-                    should equal the number of input channels.
+                    should be a 4d matrix with on the 4th dimension the time series. The length of this list
+                    equals the number of channels.
             slicing_axis (int): the (x,y,z) axis over which we will loop to reconstruct the volumes. 0=x, 1=y, 2=z.
         """
         super(SliceBySliceReconstructionMethod, self).__init__()
