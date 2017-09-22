@@ -20,18 +20,10 @@ class ReconstructionMethod(object):
         No info defined for this method.
     '''
 
-    @property
-    def name(self):
-        """The name of this method for use in output files."""
-        raise NotImplementedError()
-
-    def reconstruct(self, channels, output_directory):
+    def reconstruct(self, output_directory):
         """Reconstruct the given channels according and place the result in a subdirectory in the given directory.
 
         Args:
-            channels (list): the list of input nifti files, one for each channel element. Every nifti file
-                should be a 4d matrix with on the 4th dimension all the time series. The length of this list
-                should equal the number of input channels.
             output_directory (str): the location for the output files
 
         Returns:
@@ -40,16 +32,26 @@ class ReconstructionMethod(object):
         raise NotImplementedError()
 
 
-class AbstractReconstructionMethod(ReconstructionMethod):
+class SliceBySliceReconstructionMethod(ReconstructionMethod):
 
-    def __init__(self, cl_environments=None):
-        self._cl_environments = cl_environments
+    def __init__(self, channels, **kwargs):
+        """Create a basic reconstruction method initialized with the given data and setttings.
+
+        Args:
+            channels (list): the list of input nifti files, one for each channel element. Every nifti file
+                    should be a 4d matrix with on the 4th dimension all the time series. The length of this list
+                    should equal the number of input channels.
+            slicing_axis (int): the (x,y,z) axis over which we will loop to reconstruct the volumes. 0=x, 1=y, 2=z.
+        """
+        super(SliceBySliceReconstructionMethod, self).__init__()
+        self._channels = channels
         self._logger = logging.getLogger(__name__)
         self._output_subdir = self.__class__.__name__
+        self._slicing_axis = kwargs.get('slicing_axis', 2)
 
-    def reconstruct(self, channels, output_directory, recalculate=False):
+    def reconstruct(self, output_directory):
         output_subdir = output_directory + '/' + self._output_subdir
-        niftis = UnzippedNiftis(channels, output_subdir)
+        niftis = UnzippedNiftis(self._channels, output_subdir)
         combined = self._reconstruct(niftis, output_subdir)
 
         if isinstance(combined, collections.Mapping):
@@ -57,17 +59,6 @@ class AbstractReconstructionMethod(ReconstructionMethod):
                 mdt.write_nifti(data, output_subdir + '/{}.nii.gz'.format(name), niftis[0].get_header())
         else:
             mdt.write_nifti(combined, output_subdir + '/reconstruction.nii.gz', niftis[0].get_header())
-
-    def _reconstruct(self, input_niftis, output_directory):
-        """To be overwritten by the implementing class."""
-        raise NotImplementedError()
-
-
-class SliceBySliceReconstructionMethod(AbstractReconstructionMethod):
-
-    def __init__(self, cl_environments=None):
-        super(SliceBySliceReconstructionMethod, self).__init__(cl_environments=cl_environments)
-        self._slicing_axis = 2
 
     def _reconstruct(self, input_niftis, output_directory):
         nifti_shape = input_niftis[0].shape

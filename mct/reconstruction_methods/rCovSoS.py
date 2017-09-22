@@ -2,7 +2,7 @@ from textwrap import dedent
 import numpy as np
 import six
 from numpy.linalg import inv, cholesky
-from mct.processing import SliceBySliceReconstructionMethod
+from mct.reconstruction import SliceBySliceReconstructionMethod
 from mct.utils import load_nifti
 
 __author__ = 'Francisco Javier Fritz, Robbert Harms'
@@ -24,21 +24,22 @@ class rCovSoS(SliceBySliceReconstructionMethod):
             None
         ''')
 
-    def __init__(self, covariance_noise_matrix):
+    def __init__(self, channels, covariance_noise_matrix, **kwargs):
         """Instantiate the rCovSos method.
 
         This will do a cholesky decomposition on the input covariance noise matrix, inverts it and takes the
         transpose. We then take per voxel the dot product of the signals with this resulting matrix.
 
         Args:
-            covariance_noise_matrix (str or ndarray): the noise matrix to use. If a string is given it is
+            channels (list): the list of input nifti files, one for each channel element. Every nifti file
+                    should be a 4d matrix with on the 4th dimension all the time series. The length of this list
+                    should equal the number of input channels.
+            covariance_noise_matrix (str or ndarray): the corresponding noise matrix to use. If a string is given it is
                 supposed to be a nifti file path.
         """
-        super(rCovSoS, self).__init__()
+        super(rCovSoS, self).__init__(channels, **kwargs)
         if isinstance(covariance_noise_matrix, six.string_types):
             covariance_noise_matrix = load_nifti(covariance_noise_matrix).get_data()
-        else:
-            covariance_noise_matrix = covariance_noise_matrix
         self._inverse_covar = cholesky(inv(covariance_noise_matrix))
 
     def _reconstruct_slice(self, slice_data, slice_index):

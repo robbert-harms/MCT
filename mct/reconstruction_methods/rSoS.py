@@ -1,6 +1,6 @@
 from textwrap import dedent
 import numpy as np
-from mct.processing import SliceBySliceReconstructionMethod
+from mct.reconstruction import SliceBySliceReconstructionMethod
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'

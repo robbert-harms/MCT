@@ -4,7 +4,7 @@ import six
 from mot.model_building.parameter_functions.transformations import CosSqrClampTransform
 from mot.model_building.model_builders import ParameterTransformedModel
 
-from mct.processing import SliceBySliceReconstructionMethod
+from mct.reconstruction import SliceBySliceReconstructionMethod
 from mot import Powell
 import mdt
 import numpy as np
@@ -35,15 +35,19 @@ class STARC(SliceBySliceReconstructionMethod):
             * Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
     ''')
 
-    def __init__(self, starting_points=None, cl_environments=None):
+    def __init__(self, channels, starting_points=None, cl_environments=None, **kwargs):
         """Reconstruct the input using the STARC method.
 
         Args:
+            channels (list): the list of input nifti files, one for each channel element. Every nifti file
+                    should be a 4d matrix with on the 4th dimension all the time series. The length of this list
+                    should equal the number of input channels.
             starting_points (ndarray or str): optional, the set of weights to use as a starting point
                 for the fitting routine.
+            cl_environments (list): the list of CL environments to use for the OpenCL accelerated optimization
         """
-        super(STARC, self).__init__(cl_environments=cl_environments)
-        self._optimizer = Powell(cl_environments=self._cl_environments, patience=2)
+        super(STARC, self).__init__(channels, **kwargs)
+        self._optimizer = Powell(cl_environments=cl_environments, patience=2)
         self._starting_points = starting_points
         if isinstance(self._starting_points, six.string_types):
             self._starting_points = mdt.load_nifti(starting_points).get_data()

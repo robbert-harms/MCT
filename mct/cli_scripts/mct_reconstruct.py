@@ -85,8 +85,8 @@ class Reconstruct(BasicShellApplication):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        method = mct.load_reconstruction_method(args.method_name, **method_kwargs)
-        method.reconstruct(input_files, output_dir)
+        method = mct.load_reconstruction_method(args.method_name, input_files, **method_kwargs)
+        method.reconstruct(output_dir)
 
 
 def get_keyword_args(kwargs, base_dir):
