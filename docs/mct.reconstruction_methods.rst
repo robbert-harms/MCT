@@ -12,6 +12,14 @@ mct\.reconstruction\_methods\.STARC module
     :undoc-members:
     :show-inheritance:
 
+mct\.reconstruction\_methods\.rCovSoS module
+--------------------------------------------
+
+.. automodule:: mct.reconstruction_methods.rCovSoS
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 mct\.reconstruction\_methods\.rSoS module
 -----------------------------------------
 

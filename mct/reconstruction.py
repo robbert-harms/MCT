@@ -1,7 +1,11 @@
 import logging
+import timeit
 from contextlib import contextmanager
 import numpy as np
 import collections
+
+import time
+
 import mdt
 from mct.utils import UnzippedNiftis
 
@@ -20,11 +24,12 @@ class ReconstructionMethod(object):
         No info defined for this method.
     '''
 
-    def reconstruct(self, output_directory):
+    def reconstruct(self, output_directory, volumes=None):
         """Reconstruct the given channels and place the result in a subdirectory in the given directory.
 
         Args:
             output_directory (str): the location for the output files
+            volumes (list of int): the indices of the volume we want to reconstruct (0-based).
 
         Returns:
              dict: the set of results from this reconstruction method
@@ -49,10 +54,11 @@ class SliceBySliceReconstructionMethod(ReconstructionMethod):
         self._output_subdir = self.__class__.__name__
         self._slicing_axis = kwargs.get('slicing_axis', 2)
 
-    def reconstruct(self, output_directory):
+    def reconstruct(self, output_directory, volumes=None):
         output_subdir = output_directory + '/' + self._output_subdir
         niftis = UnzippedNiftis(self._channels, output_subdir)
-        combined = self._reconstruct(niftis, output_subdir)
+
+        combined = self._reconstruct(niftis, output_subdir, volumes=volumes)
 
         if isinstance(combined, collections.Mapping):
             for name, data in combined.items():
@@ -60,15 +66,28 @@ class SliceBySliceReconstructionMethod(ReconstructionMethod):
         else:
             mdt.write_nifti(combined, output_subdir + '/reconstruction.nii.gz', niftis[0].get_header())
 
-    def _reconstruct(self, input_niftis, output_directory):
+    def _reconstruct(self, input_niftis, output_directory, volumes=None):
         nifti_shape = input_niftis[0].shape
         slice_results = []
 
+        if volumes is None:
+            volumes = list(range(nifti_shape[3]))
+            self._logger.info('Reconstructing all volumes')
+        elif volumes == 'odd':
+            volumes = list(range(0, nifti_shape[3], 2))
+            self._logger.info('Reconstructing all odd volumes {}'.format(list(volumes)))
+        elif volumes == 'even':
+            volumes = list(range(1, nifti_shape[3], 2))
+            self._logger.info('Reconstructing all even volumes {}'.format(list(volumes)))
+        else:
+            self._logger.info('Reconstructing using the specified volumes {}'.format(list(volumes)))
+
+        start_time = timeit.default_timer()
         logging_enabled = True
         for z_slice in range(nifti_shape[2]):
-            self._logger.info('Processing slice {} of {}'.format(z_slice, nifti_shape[2]))
+            self._logger.info(self._get_batch_start_message(start_time, z_slice, nifti_shape[2]))
 
-            slice_data = self._get_slice_all_channels(input_niftis, z_slice)
+            slice_data = self._get_slice_all_channels(input_niftis, z_slice, volumes)
 
             if logging_enabled:
                 slice_results.append(self._reconstruct_slice(slice_data, z_slice))
@@ -96,32 +115,57 @@ class SliceBySliceReconstructionMethod(ReconstructionMethod):
         for handler in handlers:
             handler.setLevel(logging.INFO)
 
+    def _get_batch_start_message(self, start_time, slice_index, total_nmr_slices):
+        def calculate_run_days(runtime):
+            if runtime > 24 * 60 * 60:
+                return runtime // 24 * 60 * 60
+            return 0
+
+        run_time = timeit.default_timer() - start_time
+        current_percentage = slice_index / float(total_nmr_slices)
+        if current_percentage > 0:
+            remaining_time = (run_time / current_percentage) - run_time
+        else:
+            remaining_time = None
+
+        run_time_str = str(calculate_run_days(run_time)) + ':' + time.strftime('%H:%M:%S', time.gmtime(run_time))
+        remaining_time_str = (str(calculate_run_days(remaining_time)) + ':' +
+                              time.strftime('%H:%M:%S', time.gmtime(remaining_time))) if remaining_time else '?'
+
+        return ('Processing slice {0} of {1}, we are at {2:.2%}, time spent: {3}, time left: {4} (d:h:m:s).'.
+                format(slice_index, total_nmr_slices, current_percentage, run_time_str, remaining_time_str))
+
     def _reconstruct_slice(self, slice_data, slice_index):
         """Reconstruct the given slice.
 
         Args:
             slice_data (ndarray): a 4d array with the first two dimensions the remaining voxel locations and
-                third the timeseries and finally the channels
+                third the volumes and finally the channels
             slice_index (int): the slice index
+
+        Returns:
+            ndarray: the reconstruction of the given volumes for the given slice. This should be an array of
+                shape (dim1, dim2, nmr_volumes) where dim1 and dim2 should be the same dimensions as
+                the input (typically x and y if we are looping over z) and nmr_volumes equals the number of volumes.
         """
         raise NotImplementedError()
 
-    def _get_slice_all_channels(self, input_niftis, slice_index):
+    def _get_slice_all_channels(self, input_niftis, slice_index, volumes):
         """Get the requested slice over each of the input niftis.
 
         Args:
             input_niftis (list of nifti): the list of nifti file objects
             slice_index (int): the slice index we want
-            axis (Optional[Int]): the axis over which to loop
+            volumes (list of int): the volumes to use for the reconstruction
 
         Returns:
             ndarray: a 4d array with the first two dimensions the remaining voxel locations and then the timeseries
                 and then the channels
         """
         if self._slicing_axis == 0:
-            slices = [nifti.dataobj[int(slice_index), :, :] for nifti in input_niftis]
+            slices = [nifti.dataobj[int(slice_index), :, :][..., volumes] for nifti in input_niftis]
         elif self._slicing_axis == 1:
-            slices = [nifti.dataobj[:, int(slice_index), :] for nifti in input_niftis]
+            slices = [nifti.dataobj[:, int(slice_index), :][..., volumes] for nifti in input_niftis]
         else:
-            slices = [nifti.dataobj[:, :, int(slice_index)] for nifti in input_niftis]
+            slices = [nifti.dataobj[:, :, int(slice_index)][..., volumes] for nifti in input_niftis]
         return np.stack(slices, axis=-1)

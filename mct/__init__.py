@@ -3,7 +3,7 @@ import yaml
 from mct.components_loader import load_reconstruction_method
 from mct.utils import get_mot_config_context
 from .__version__ import VERSION, VERSION_STATUS, __version__
-from mct.utils import extract_timepoints, load_nifti, combine_weighted_sum
+from mct.utils import load_nifti, combine_weighted_sum
 from mct.components_loader import load_reconstruction_method, get_reconstruction_method_class
 
 

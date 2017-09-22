@@ -5,8 +5,6 @@
 import argparse
 import os
 from argcomplete.completers import FilesCompleter
-
-from mct.utils import get_cl_devices
 from mot import cl_environments
 
 import mct
@@ -52,6 +50,10 @@ class Reconstruct(BasicShellApplication):
                             help='the output directory, defaults to a subdir in the dir '
                                  'of the first weight.').completer = FilesCompleter()
 
+        parser.add_argument('-v', '--volumes', required=False, nargs='+',
+                            help='the volumes to use in the reconstruction, either a list of indices '
+                                 'or the literal "odd" or "even"')
+
         parser.add_argument('--cl-device-ind', type=int, nargs='*', choices=self.available_devices,
                             help="The index of the device we would like to use. This follows the indices "
                                  "in mdt-list-devices and defaults to the first GPU.")
@@ -66,11 +68,7 @@ class Reconstruct(BasicShellApplication):
             raise ValueError('The given model {} can not be found.'.format(args.method_name))
 
         method_kwargs = get_keyword_args(args.kwargs, os.path.realpath(''))
-
-        cl_environments = None
-        if args.cl_device_ind is not None:
-            cl_environments = [get_cl_devices()[ind] for ind in args.cl_device_ind]
-        method_kwargs['cl_environments'] = cl_environments
+        method_kwargs['cl_device_ind'] = args.cl_device_ind
 
         input_files = get_input_files(args.input_files, os.path.realpath(''))
 
@@ -85,8 +83,15 @@ class Reconstruct(BasicShellApplication):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
+        if args.volumes[0] == 'odd':
+            volumes_to_use = 'odd'
+        elif args.volumes[0] == 'even':
+            volumes_to_use = 'even'
+        else:
+            volumes_to_use = list(map(int, args.volumes))
+
         method = mct.load_reconstruction_method(args.method_name, input_files, **method_kwargs)
-        method.reconstruct(output_dir)
+        method.reconstruct(output_dir, volumes=volumes_to_use)
 
 
 def get_keyword_args(kwargs, base_dir):

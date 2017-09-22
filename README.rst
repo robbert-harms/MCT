@@ -4,15 +4,20 @@ MRI Coil-reconstruct Toolbox
 The MRI Coil-reconstruct Toolbox, MCT, is a small toolbox for combining the channels of a multi-channel MRI acquisition.
 Where possible, this toolbox uses GPU accelerated routines to speed-up the processing.
 For example, the weights of the STARC (STAbility-weighted Rf-coil Combination) reconstruction model are fitted using the GPU or using multi-threaded CPU.
-At the moment MCT only supports rSoS (root Sum Of Squares) and STARC reconstruction, with plans for adding rCovSoS and others.
+At the moment MCT supports rSoS (root Sum Of Squares), rCovSoS (same as SoS but than with additional usage of a noise covariance matrix) and STARC.
+
+
+**Beta version notice**
+
+Please note that this software is still in beta and that the user interface may change over versions.
 
 
 *******
 Summary
 *******
-* GPU/multicore-CPU accelerated STARC
-* rSoS (root Sum of Squares) and STARC available
+* features multiple coil combine / reconstruction methods
 * command line and python interface
+* GPU/multicore-CPU accelerated STARC
 * Free Open Source Software: LGPL v3 license
 * Python and OpenCL based
 * Full documentation: https://mct.readthedocs.io/
@@ -21,25 +26,51 @@ Summary
 * Tags: MRI, coil-reconstruct, image reconstruction, opencl, python
 
 
-*************
-Fitting STARC
-*************
-STARC [1] is a method of combining multiple volumes using a iterative optimization process.
-You can use the following command for combining all your channels using the STARC reconstruction method:
+*******************
+Data reconstruction
+*******************
+This software contains various reconstruction methods that can be used to combine your channels into one (or more) volumes.
+Not all reconstruction methods may be applicable to your data, for example the STARC [1] method only works when dealing with fMRI data.
+
+Console
+=======
+To reconstruct your data using the command line, after installation you can use:
 
 .. code-block:: console
 
-    $ mct-reconstruct STARC {0..15}.nii -m mask.nii
+    $ mct-reconstruct <method> {0..15}.nii
 
-Which will reconstruct your 16 channel coil data with the given (optional) mask.
+Where method at the moment is one of "rSoS", "rCovSoS" or "STARC".
+Some methods require more information to combine the channels, please see the full documentation for this.
 
-If you only want to use certain time points of your data, please extract these timepoints first using:
+If you only want to use certain volumes of your data, use the "--volumes" or "-v" switch on the command line:
 
 .. code-block:: console
 
-    $ mct-extract-timepoints {0..15}.nii -t odd -o ./output_folder
+    $ mct-reconstruct <method> {0..15}.nii -v odd
 
-and then reconstruct your data based on those extracted timepoints.
+To use (for example) only the odd volumes. Available options are "odd", "even" or a list of indices, such as "0 2 4 5" (space separated).
+
+
+Python
+======
+It is also possible to reconstruct your data using the Python API, for example:
+
+
+.. code-block:: python
+
+    from mct.reconstruction_methods import rSoS, rCovSoS, STARC
+
+    input_path = '/data/'
+    output_path = '/data/output/'
+    nmr_channels = 16
+    input_filenames = [input_path + str(ind)
+                       for ind in range(nmr_channels)]
+
+    method = rSoS(input_filenames)
+    method.reconstruct(output_path, volumes='odd')
+
+This would reconstruct your data using rSoS using only the odd volumes.
 
 
 References:
@@ -96,3 +127,15 @@ Running MDT in the CPU seems to work though.
 
 
 For more information and full installation instructions please see the documentation of the MDT package https://maastrichtdiffusiontoolbox.readthedocs.org
+
+
+*******
+Roadmap
+*******
+1) Add a few more reconstruction methods like:
+
+    * Roemer
+    * GRAPPA
+    * SENSE
+
+2) Improve the data handling and memory usage.

@@ -134,31 +134,6 @@ def combine_weighted_sum(input_channels, weights, output_filename):
     mdt.write_nifti(output, output_filename, header)
 
 
-def extract_timepoints(input_files, timepoints, output_dir):
-    """Extract specific time points from all input nifti files.
-
-    Args:
-        input_files (list[str]): the list with input filenames
-        timepoints (str or range): either a sequence of specific timepoints to extract or the string "even" for
-            the even timepoints (starting at 0) or the string "odd" with the odd timepoints (starting at 1).
-        output_dir (str): the location for the output files. Since the filenames will be exactly the same as the
-            input filenames, we need a new directory for the output files.
-    """
-    output_dir = output_dir.replace('//', '/')
-    nmr_timepoints = load_nifti(input_files[0]).shape[3]
-
-    if timepoints == 'even':
-        timepoints = range(0, nmr_timepoints, 2)
-    elif timepoints == 'odd':
-        timepoints = range(1, nmr_timepoints, 2)
-
-    for filename in input_files:
-        full_name = nifti_filepath_resolution(filename)
-        nifti = load_nifti(full_name)
-        output_path = output_dir + '/' + ''.join(split_image_path(full_name)[1:])
-        mdt.write_nifti(nifti.get_data()[..., timepoints], output_path, nifti.get_header())
-
-
 def calculate_noise_covariance_matrix(input_data, normalize=False):
     """Obtain noise covariance matrix from raw data.
 

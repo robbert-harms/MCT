@@ -1,6 +1,8 @@
 from textwrap import dedent
 
 import six
+
+from mct.utils import get_cl_devices
 from mot.model_building.parameter_functions.transformations import CosSqrClampTransform
 from mot.model_building.model_builders import ParameterTransformedModel
 
@@ -30,12 +32,12 @@ class STARC(SliceBySliceReconstructionMethod):
         
         Optional keyword args:
             starting_points="<nifti_file>" - the starting point for the optimization routine
-        
+            
         References:
             * Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
     ''')
 
-    def __init__(self, channels, starting_points=None, cl_environments=None, **kwargs):
+    def __init__(self, channels, starting_points=None, cl_device_ind=None, **kwargs):
         """Reconstruct the input using the STARC method.
 
         Args:
@@ -44,9 +46,15 @@ class STARC(SliceBySliceReconstructionMethod):
                     should equal the number of input channels.
             starting_points (ndarray or str): optional, the set of weights to use as a starting point
                 for the fitting routine.
-            cl_environments (list): the list of CL environments to use for the OpenCL accelerated optimization
+            cl_device_ind (list of int): the list of indices into :func:`mct.utils.get_cl_devices` that you want
+                to use for the OpenCL based optimization.
         """
         super(STARC, self).__init__(channels, **kwargs)
+
+        cl_environments = None
+        if cl_device_ind is not None:
+            cl_environments = [get_cl_devices()[ind] for ind in cl_device_ind]
+
         self._optimizer = Powell(cl_environments=cl_environments, patience=2)
         self._starting_points = starting_points
         if isinstance(self._starting_points, six.string_types):

@@ -20,10 +20,10 @@ mct\.components\_loader module
     :undoc-members:
     :show-inheritance:
 
-mct\.processing module
-----------------------
+mct\.reconstruction module
+--------------------------
 
-.. automodule:: mct.processing
+.. automodule:: mct.reconstruction
     :members:
     :undoc-members:
     :show-inheritance:
