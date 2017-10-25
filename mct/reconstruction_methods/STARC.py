@@ -13,7 +13,7 @@ import numpy as np
 
 from mot.model_building.utils import ParameterCodec
 from mot.model_interfaces import OptimizeModelInterface
-from mot.utils import dtype_to_ctype, KernelInputBuffer, SimpleNamedCLFunction
+from mot.utils import dtype_to_ctype, KernelInputArray, SimpleNamedCLFunction
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
@@ -133,7 +133,7 @@ class STARCModel(OptimizeModelInterface):
         return False
 
     def get_kernel_data(self):
-        return {'observations': KernelInputBuffer(self.voxel_data.reshape((self.nmr_voxels, -1)))}
+        return {'observations': KernelInputArray(self.voxel_data.reshape((self.nmr_voxels, -1)))}
 
     def get_nmr_problems(self):
         return self.nmr_voxels
@@ -154,20 +154,14 @@ class STARCModel(OptimizeModelInterface):
     def get_model_eval_function(self):
         pass  # not needed
 
-    def get_residual_per_observation_function(self):
-        pass  # not needed
-
     def get_objective_per_observation_function(self):
         fname = '_objectiveFunc'
         func = '''
-            double _weighted_sum(mot_data_struct* data, const mot_float_type* const x, uint volume_index){
-
-                global ''' + self._data_ctype + '''* observations = data->observations;
-
+            double _weighted_sum(mot_float_type* weights, global ''' + self._data_ctype + '''* observations){
                 double sum = 0;
                 for(uint i = 0; i < ''' + str(self.nmr_channels) + '''; i++){
-                    sum += x[i] * observations[i + volume_index * ''' + str(self.nmr_channels) + '''];
-                }                
+                    sum += weights[i] * observations[i];
+                }
                 return sum;
             }
 
@@ -177,7 +171,7 @@ class STARCModel(OptimizeModelInterface):
                 double delta;
                 double value;
                 for(uint i = 0; i < ''' + str(self.nmr_volumes) + '''; i++){
-                    value = _weighted_sum(data, x, i);
+                    value = _weighted_sum(x, data->observations + i * ''' + str(self.nmr_channels) + ''');
                     delta = value - mean;
                     mean += delta / (i + 1);
                     variance += delta * (value - mean);
