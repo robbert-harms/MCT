@@ -26,13 +26,13 @@ class STARC(SliceBySliceReconstructionMethod):
 
     command_line_info = dedent('''
         The STARC (STAbility-weighted Rf-coil Combination) method [1] reconstructs EPI acquisitions using a weighted sum of the input channels. The weights are chosen such that the reconstruction has optimal tSNR.
-        
+
         Required args:
             None
-        
+
         Optional keyword args:
             starting_points="<nifti_file>" - the starting point for the optimization routine
-            
+
         References:
             * Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
     ''')
@@ -53,6 +53,8 @@ class STARC(SliceBySliceReconstructionMethod):
 
         cl_environments = None
         if cl_device_ind is not None:
+            if not isinstance(cl_device_ind, (tuple, list)):
+                cl_device_ind = [cl_device_ind]
             cl_environments = [get_cl_devices()[ind] for ind in cl_device_ind]
 
         self._optimizer = Powell(cl_environments=cl_environments, patience=2)
@@ -74,9 +76,13 @@ class STARC(SliceBySliceReconstructionMethod):
         weights = result_struct.get_optimization_result()
         reconstruction = np.sum(batch * weights[:, None, :], axis=2)
 
+        sos = np.sqrt(np.sum(np.abs(slice_data).astype(np.float64) ** 2, axis=-1))
+        reconstruction = np.reshape(reconstruction, slice_data.shape[:-2] + (nmr_timeseries,))
+        reconstruction *= (np.mean(sos, axis=2) / np.mean(reconstruction, axis=2))[:, :, None]
+
         return {
             'weights': np.reshape(weights, slice_data.shape[:-2] + (nmr_channels,)),
-            'reconstruction': np.reshape(reconstruction, slice_data.shape[:-2] + (nmr_timeseries,)),
+            'reconstruction': reconstruction,
         }
 
     def _get_starting_weights(self, slice_index):
@@ -227,14 +233,14 @@ class STARCOptimizationCodec(ParameterCodec):
             void ''' + function_name + '''(mot_data_struct* data_void, mot_float_type* x){
                 double sum_of_weights = 0;
                 for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
-                    x[i] = ''' + decode_transform.create_assignment('x[i]', 0, 1) + ''';    
+                    x[i] = ''' + decode_transform.create_assignment('x[i]', 0, 1) + ''';
                     sum_of_weights += x[i];
                 }
 
                 for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
                     x[i] = x[i] / sum_of_weights;
                 }
-            } 
+            }
         '''
         return func
 
@@ -243,7 +249,7 @@ class STARCOptimizationCodec(ParameterCodec):
         func = '''
             void ''' + function_name + '''(mot_data_struct* data_void, mot_float_type* x){
                 double sum_of_weights = 0;
-                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){    
+                for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
                     sum_of_weights += x[i];
                 }
 
@@ -254,6 +260,6 @@ class STARCOptimizationCodec(ParameterCodec):
                 for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
                     x[i] = ''' + encode_transform.create_assignment('x[i]', 0, 1) + ''';
                 }
-            } 
+            }
         '''
         return func
