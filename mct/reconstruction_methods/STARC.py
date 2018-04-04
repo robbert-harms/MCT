@@ -66,10 +66,10 @@ class STARC(SliceBySliceReconstructionMethod):
 
         batch = np.reshape(slice_data, (-1, nmr_timeseries, nmr_channels))
 
-        model = STARCModel(batch, starting_weights=self._get_starting_weights(slice_index))
-        constrained_model = ParameterTransformedModel(model, STARCOptimizationCodec(nmr_channels))
+        constrained_model = ParameterTransformedModel(STARCModel(batch), STARCOptimizationCodec(nmr_channels))
 
-        result_struct = self._optimizer.minimize(constrained_model)
+        result_struct = self._optimizer.minimize(
+            constrained_model, constrained_model.encode_parameters(self._get_starting_weights(slice_index)))
 
         weights = result_struct.get_optimization_result()
         reconstruction = np.sum(batch * weights[:, None, :], axis=2)
@@ -91,7 +91,7 @@ class STARC(SliceBySliceReconstructionMethod):
 
 class STARCModel(OptimizeModelInterface):
 
-    def __init__(self, voxel_data, starting_weights=None):
+    def __init__(self, voxel_data):
         """Create the STARC model such that MOT can fit it.
 
         This model maximizes the tSNR (``tSNR = mean(time_series') / std(time_series')``) by minimizing 1/tSNR, or, in
@@ -105,24 +105,12 @@ class STARCModel(OptimizeModelInterface):
 
         Args:
             voxel_data (ndarray): a 3d matrix with (nmr_voxels, nmr_volumes, nmr_channels).
-            starting_weights (ndarray): a 2d matrix with (nmr_voxels, nmr_channels), if provided, it is the
-                set of starting weights for the optimization routine.
         """
         self.voxel_data = voxel_data
-        self.starting_weights = starting_weights
         self.nmr_voxels = voxel_data.shape[0]
         self.nmr_volumes = voxel_data.shape[1]
         self.nmr_channels = voxel_data.shape[2]
         self._data_ctype = dtype_to_ctype(self.voxel_data.dtype)
-
-        if self.starting_weights is not None:
-            if len(self.starting_weights.shape) != 2:
-                raise ValueError('The starting weights should have exactly '
-                                 'two dimensions, {} given.'.format(len(self.starting_weights.shape)))
-            if self.starting_weights.shape[1] != self.voxel_data.shape[2]:
-                raise ValueError('The number of channels of the input data ({}) '
-                                 'and the starting weights ({}) should match.'.format(self.voxel_data.shape[2],
-                                                                                      self.starting_weights.shape[1]))
 
     @property
     def name(self):
@@ -185,11 +173,6 @@ class STARCModel(OptimizeModelInterface):
             }
         '''
         return SimpleNamedCLFunction(func, fname)
-
-    def get_initial_parameters(self):
-        if self.starting_weights is not None:
-            return self.starting_weights
-        return np.ones((self.nmr_voxels, self.nmr_channels)) / float(self.nmr_channels)
 
     def get_lower_bounds(self):
         return np.zeros((self.nmr_voxels, self.nmr_channels))
