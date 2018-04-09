@@ -3,15 +3,15 @@ from textwrap import dedent
 import six
 
 from mct.utils import get_cl_devices
-from mot.model_building.parameter_functions.transformations import CosSqrClampTransform
-from mot.model_building.model_builders import ParameterTransformedModel
+from mdt.model_building.parameter_functions.transformations import CosSqrClampTransform
+from mdt.model_building.model_builders import ParameterTransformedModel
 
 from mct.reconstruction import SliceBySliceReconstructionMethod
 from mot import Powell
 import mdt
 import numpy as np
 
-from mot.model_building.utils import ParameterCodec
+from mdt.model_building.utils import ParameterCodec
 from mot.model_interfaces import OptimizeModelInterface
 from mot.utils import dtype_to_ctype, KernelInputArray, SimpleNamedCLFunction
 
@@ -118,14 +118,6 @@ class STARCModel(OptimizeModelInterface):
         self.nmr_channels = voxel_data.shape[2]
         self._data_ctype = dtype_to_ctype(self.voxel_data.dtype)
 
-    @property
-    def name(self):
-        return 'weighted_coils'
-
-    @property
-    def double_precision(self):
-        return False
-
     def get_kernel_data(self):
         return {'observations': KernelInputArray(self.voxel_data.reshape((self.nmr_voxels, -1)))}
 
@@ -136,7 +128,7 @@ class STARCModel(OptimizeModelInterface):
         # returns the inverse of the tSNR as the only observation instance
         return 1
 
-    def get_nmr_estimable_parameters(self):
+    def get_nmr_parameters(self):
         return self.nmr_channels
 
     def get_pre_eval_parameter_modifier(self):
@@ -144,9 +136,6 @@ class STARCModel(OptimizeModelInterface):
         func_name = '_preEvaluation'
         func = 'void ' + func_name + '(mot_data_struct* data, const mot_float_type* x){}'
         return SimpleNamedCLFunction(func, func_name)
-
-    def get_model_eval_function(self):
-        pass  # not needed
 
     def get_objective_per_observation_function(self):
         fname = '_objectiveFunc'

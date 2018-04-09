@@ -6,8 +6,18 @@ Changelog
 v0.2.1 (2018-04-04)
 ===================
 
+Added
+-----
+- Adds post-optimization transformation to STARC.
+
+Changed
+-------
+- Updates following the changes in MOT.
+
 Other
 -----
+- Merge branch 'master' of github.com:cbclab/MCT.
+- Version bump.
 - Following changes in MOT.
 
 
