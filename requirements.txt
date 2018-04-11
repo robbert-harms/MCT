@@ -1,5 +1,5 @@
-mdt>=0.10.4
-mot>=0.3.6
+mdt>=0.11.3
+mot>=0.4.2
 numpy
 six
 nibabel

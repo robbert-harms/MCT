@@ -13,7 +13,8 @@ import numpy as np
 
 from mdt.model_building.utils import ParameterCodec
 from mot.model_interfaces import OptimizeModelInterface
-from mot.utils import dtype_to_ctype, KernelInputArray, SimpleNamedCLFunction
+from mot.utils import dtype_to_ctype, NameFunctionTuple
+from mot.kernel_input_data import KernelInputArray
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
@@ -131,12 +132,6 @@ class STARCModel(OptimizeModelInterface):
     def get_nmr_parameters(self):
         return self.nmr_channels
 
-    def get_pre_eval_parameter_modifier(self):
-        # we always need to return a placeholder
-        func_name = '_preEvaluation'
-        func = 'void ' + func_name + '(mot_data_struct* data, const mot_float_type* x){}'
-        return SimpleNamedCLFunction(func, func_name)
-
     def get_objective_per_observation_function(self):
         fname = '_objectiveFunc'
         func = '''
@@ -167,7 +162,7 @@ class STARCModel(OptimizeModelInterface):
                 return _inverse_tSNR(data, x);
             }
         '''
-        return SimpleNamedCLFunction(func, fname)
+        return NameFunctionTuple(fname, func)
 
     def get_lower_bounds(self):
         return np.zeros((self.nmr_voxels, self.nmr_channels))
