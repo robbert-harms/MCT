@@ -4,7 +4,7 @@ import six
 
 from mct.utils import get_cl_devices
 from mdt.model_building.parameter_functions.transformations import CosSqrClampTransform
-from mdt.model_building.model_builders import ParameterTransformedModel
+from mdt.model_building.utils import ParameterTransformedModel
 
 from mct.reconstruction import SliceBySliceReconstructionMethod
 from mot import Powell
