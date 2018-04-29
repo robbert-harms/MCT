@@ -126,7 +126,7 @@ class STARCModel(OptimizeModelInterface):
     def get_nmr_problems(self):
         return self.nmr_voxels
 
-    def get_nmr_inst_per_problem(self):
+    def get_nmr_observations(self):
         # returns the inverse of the tSNR as the only observation instance
         return 1
 
