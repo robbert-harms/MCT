@@ -12,9 +12,10 @@ import mdt
 import numpy as np
 
 from mdt.model_building.utils import ParameterCodec
+from mot.cl_runtime_info import CLRuntimeInfo
 from mot.model_interfaces import OptimizeModelInterface
 from mot.utils import dtype_to_ctype, NameFunctionTuple
-from mot.kernel_input_data import KernelInputArray
+from mot.kernel_data import KernelArray
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
@@ -58,7 +59,7 @@ class STARC(SliceBySliceReconstructionMethod):
                 cl_device_ind = [cl_device_ind]
             cl_environments = [get_cl_devices()[ind] for ind in cl_device_ind]
 
-        self._optimizer = Powell(cl_environments=cl_environments, patience=2)
+        self._optimizer = Powell(patience=2, cl_runtime_info=CLRuntimeInfo(cl_environments=cl_environments))
         self._starting_points = starting_points
         if isinstance(self._starting_points, six.string_types):
             self._starting_points = mdt.load_nifti(starting_points).get_data()
@@ -120,7 +121,7 @@ class STARCModel(OptimizeModelInterface):
         self._data_ctype = dtype_to_ctype(self.voxel_data.dtype)
 
     def get_kernel_data(self):
-        return {'observations': KernelInputArray(self.voxel_data.reshape((self.nmr_voxels, -1)))}
+        return {'observations': KernelArray(self.voxel_data.reshape((self.nmr_voxels, -1)))}
 
     def get_nmr_problems(self):
         return self.nmr_voxels
