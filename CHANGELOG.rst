@@ -3,6 +3,11 @@ Changelog
 *********
 
 
+v0.2.4 (2018-05-03)
+===================
+- Following changes in MOT.
+
+
 v0.2.3 (2018-04-11)
 ===================
 - Following changes in MOT.
