@@ -73,7 +73,7 @@ class STARC(SliceBySliceReconstructionMethod):
         constrained_model = ParameterTransformedModel(STARCModel(batch), STARCOptimizationCodec(nmr_channels))
 
         result_struct = self._optimizer.minimize(
-            constrained_model, constrained_model.encode_parameters(self._get_starting_weights(slice_index)))
+            constrained_model, constrained_model.encode_parameters(self._get_starting_weights(slice_index, batch)))
 
         weights = result_struct.get_optimization_result()
         reconstruction = np.sum(batch * weights[:, None, :], axis=2)
@@ -87,14 +87,16 @@ class STARC(SliceBySliceReconstructionMethod):
             'reconstruction': reconstruction,
         }
 
-    def _get_starting_weights(self, slice_index):
-        starting_weights = None
-        if self._starting_points is not None:
-            index = [slice(None)] * 3
-            index[self._slicing_axis] = slice_index
-            starting_weights = self._starting_points[index]
-            starting_weights = np.reshape(starting_weights, (-1, starting_weights.shape[-1]))
-        return starting_weights
+    def _get_starting_weights(self, slice_index, current_batch):
+        if self._starting_points is None:
+            nmr_voxels = current_batch.shape[0]
+            nmr_channels = current_batch.shape[2]
+            return np.ones((nmr_voxels, nmr_channels)) / float(nmr_channels)
+
+        index = [slice(None)] * 3
+        index[self._slicing_axis] = slice_index
+        starting_weights = self._starting_points[index]
+        return np.reshape(starting_weights, (-1, starting_weights.shape[-1]))
 
 
 class STARCModel(OptimizeModelInterface):
