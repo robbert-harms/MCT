@@ -2,6 +2,10 @@
 Changelog
 *********
 
+v0.2.5 (2018-07-17)
+===================
+- Updated makefile to use twine for uploading to PyPi.
+
 
 v0.2.4 (2018-05-03)
 ===================

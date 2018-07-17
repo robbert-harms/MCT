@@ -13,4 +13,5 @@ Introduction
     :maxdepth: 2
     :hidden:
 
+    changelog
     developers

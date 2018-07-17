@@ -1,7 +1,3 @@
-*********
-Changelog
-*********
-
 
 {{#versions}}
 {{{label}}}
@@ -19,6 +15,5 @@ Changelog
 {{/body}}
 {{/commits}}
 {{/sections}}
-
-
 {{/versions}}
+
