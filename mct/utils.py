@@ -1,6 +1,5 @@
 import os
 import nibabel as nib
-import six
 
 from mot.load_balance_strategies import EvenDistribution
 
@@ -124,7 +123,7 @@ def combine_weighted_sum(input_channels, weights, output_filename):
     final_shape = load_nifti(input_channels[0]).shape
     output = np.zeros(final_shape, dtype=np.float64)
 
-    if isinstance(weights, six.string_types):
+    if isinstance(weights, str):
         weights = load_nifti(weights).get_data()
 
     for ind, input_channel in enumerate(input_channels):

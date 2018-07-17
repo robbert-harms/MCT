@@ -1,7 +1,5 @@
 from textwrap import dedent
 
-import six
-
 from mct.utils import get_cl_devices
 from mdt.model_building.parameter_functions.transformations import CosSqrClampTransform
 from mdt.model_building.utils import ParameterTransformedModel
@@ -61,7 +59,7 @@ class STARC(SliceBySliceReconstructionMethod):
 
         self._optimizer = Powell(patience=2, cl_runtime_info=CLRuntimeInfo(cl_environments=cl_environments))
         self._starting_points = starting_points
-        if isinstance(self._starting_points, six.string_types):
+        if isinstance(self._starting_points, str):
             self._starting_points = mdt.load_nifti(starting_points).get_data()
 
     def _reconstruct_slice(self, slice_data, slice_index):

@@ -1,6 +1,5 @@
 from textwrap import dedent
 import numpy as np
-import six
 from numpy.linalg import inv, cholesky
 from mct.reconstruction import SliceBySliceReconstructionMethod
 from mct.utils import load_nifti
@@ -38,7 +37,7 @@ class rCovSoS(SliceBySliceReconstructionMethod):
                 supposed to be a nifti file path.
         """
         super(rCovSoS, self).__init__(channels, **kwargs)
-        if isinstance(covariance_noise_matrix, six.string_types):
+        if isinstance(covariance_noise_matrix, str):
             covariance_noise_matrix = load_nifti(covariance_noise_matrix).get_data()
         self._inverse_covar = cholesky(inv(covariance_noise_matrix))
 
