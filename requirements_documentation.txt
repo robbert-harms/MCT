@@ -4,6 +4,5 @@ scipy>=0.12.1
 pyyaml
 nibabel
 argcomplete
-grako
 sphinx-argparse
 sphinxcontrib-bibtex
