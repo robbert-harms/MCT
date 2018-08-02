@@ -2,6 +2,12 @@
 Changelog
 *********
 
+v0.2.6 (2018-08-02)
+===================
+- Following changes in MOT.
+- Removed six as a dependency.
+
+
 v0.2.5 (2018-07-17)
 ===================
 - Updated makefile to use twine for uploading to PyPi.
