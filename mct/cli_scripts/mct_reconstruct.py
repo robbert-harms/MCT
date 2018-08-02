@@ -5,7 +5,7 @@
 import argparse
 import os
 from argcomplete.completers import FilesCompleter
-from mot import cl_environments
+from mot.lib import cl_environments
 
 import mct
 from mct.components_loader import list_reconstruction_methods

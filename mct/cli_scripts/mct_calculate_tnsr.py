@@ -13,7 +13,7 @@ from argcomplete.completers import FilesCompleter
 import mdt
 from mct.utils import calculate_tsnr
 from mdt.utils import split_image_path
-from mot import cl_environments
+from mot.lib import cl_environments
 
 import mct
 from mdt.shell_utils import BasicShellApplication
