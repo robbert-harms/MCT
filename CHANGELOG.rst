@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.2.7 (2018-08-02)
+===================
+- Regression fix.
+
+
 v0.2.6 (2018-08-02)
 ===================
 - Following changes in MOT.
