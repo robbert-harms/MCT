@@ -7,6 +7,8 @@ import collections
 import time
 
 import mdt
+import mot
+from mct.__version__ import VERSION
 from mct.utils import UnzippedNiftis
 
 
@@ -58,7 +60,7 @@ class SliceBySliceReconstructionMethod(ReconstructionMethod):
         output_subdir = output_directory + '/' + self._output_subdir
         niftis = UnzippedNiftis(self._channels, output_subdir)
 
-        combined = self._reconstruct(niftis, output_subdir, volumes=volumes)
+        combined = self._reconstruct(niftis, volumes=volumes)
 
         if isinstance(combined, collections.Mapping):
             for name, data in combined.items():
@@ -66,9 +68,12 @@ class SliceBySliceReconstructionMethod(ReconstructionMethod):
         else:
             mdt.write_nifti(combined, output_subdir + '/reconstruction.nii.gz', niftis[0].get_header())
 
-    def _reconstruct(self, input_niftis, output_directory, volumes=None):
+    def _reconstruct(self, input_niftis, volumes=None):
         nifti_shape = input_niftis[0].shape
         slice_results = []
+
+        self._logger.info('Using MCT version {}'.format(VERSION))
+        self._logger.info('Using MOT version {}'.format(mot.__version__))
 
         if volumes is None:
             volumes = list(range(nifti_shape[3]))

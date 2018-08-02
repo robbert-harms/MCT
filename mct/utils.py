@@ -1,7 +1,7 @@
 import os
 import nibabel as nib
 
-from mot.load_balance_strategies import EvenDistribution
+from mot.lib.load_balance_strategies import EvenDistribution
 
 import mot
 import numpy as np
@@ -82,7 +82,7 @@ def calculate_tsnr(data, axis=-1):
 def get_cl_devices():
     """Get a list of all CL devices in the system.
 
-    The indices of the devices can be used in the model fitting/sampling functions for 'cl_device_ind'.
+    The indices of the devices can be used in the model fitting/sample functions for 'cl_device_ind'.
 
     Returns:
         A list of CLEnvironments, one for each device in the system.

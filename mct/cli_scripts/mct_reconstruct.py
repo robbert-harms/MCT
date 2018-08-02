@@ -83,12 +83,14 @@ class Reconstruct(BasicShellApplication):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        if args.volumes[0] == 'odd':
-            volumes_to_use = 'odd'
-        elif args.volumes[0] == 'even':
-            volumes_to_use = 'even'
-        else:
-            volumes_to_use = list(map(int, args.volumes))
+        volumes_to_use = None
+        if args.volumes:
+            if args.volumes[0] == 'odd':
+                volumes_to_use = 'odd'
+            elif args.volumes[0] == 'even':
+                volumes_to_use = 'even'
+            else:
+                volumes_to_use = list(map(int, args.volumes))
 
         method = mct.load_reconstruction_method(args.method_name, input_files, **method_kwargs)
         method.reconstruct(output_dir, volumes=volumes_to_use)
