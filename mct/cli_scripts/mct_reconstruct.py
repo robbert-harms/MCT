@@ -52,7 +52,7 @@ class Reconstruct(BasicShellApplication):
 
         parser.add_argument('-v', '--volumes', required=False, nargs='+',
                             help='the volumes to use in the reconstruction, either a list of indices '
-                                 'or the literal "odd" or "even"')
+                                 'or the literal "odd", "even" or "all"')
 
         parser.add_argument('--cl-device-ind', type=int, nargs='*', choices=self.available_devices,
                             help="The index of the device we would like to use. This follows the indices "
@@ -89,6 +89,8 @@ class Reconstruct(BasicShellApplication):
                 volumes_to_use = 'odd'
             elif args.volumes[0] == 'even':
                 volumes_to_use = 'even'
+            elif args.volumes[0] == 'all':
+                volumes_to_use = None
             else:
                 volumes_to_use = list(map(int, args.volumes))
 

@@ -11,7 +11,7 @@ import numpy as np
 from mdt.model_building.utils import ParameterCodec
 from mot import minimize
 from mot.lib.cl_function import SimpleCLFunction
-from mot.lib.cl_runtime_info import CLRuntimeInfo
+from mot.configuration import CLRuntimeInfo
 from mot.lib.utils import dtype_to_ctype, parse_cl_function
 from mot.lib.kernel_data import Array
 
@@ -171,10 +171,9 @@ def get_starc_objective_func(voxel_data):
         }
         
         double STARC(
-                mot_data_struct* data, 
                 local const mot_float_type* const x,
-                local mot_float_type* objective_list, 
-                local double* objective_value_tmp){
+                mot_data_struct* data, 
+                local mot_float_type* objective_list){
 
             return _inverse_tSNR(x, data);
         }
