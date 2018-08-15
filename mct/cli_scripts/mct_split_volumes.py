@@ -10,8 +10,8 @@ import argparse
 import os
 from argcomplete.completers import FilesCompleter
 from mct.utils import split_write_volumes
-from mdt.nifti import nifti_filepath_resolution
-from mdt.shell_utils import BasicShellApplication
+from mdt.lib.nifti import nifti_filepath_resolution
+from mdt.lib.shell_utils import BasicShellApplication
 import textwrap
 
 from mdt.utils import split_image_path

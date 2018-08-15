@@ -16,7 +16,7 @@ from mdt.utils import split_image_path
 from mot.lib import cl_environments
 
 import mct
-from mdt.shell_utils import BasicShellApplication
+from mdt.lib.shell_utils import BasicShellApplication
 import textwrap
 
 __author__ = 'Robbert Harms'

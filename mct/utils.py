@@ -7,7 +7,7 @@ import mot
 import numpy as np
 import mdt
 import collections
-from mdt.nifti import nifti_filepath_resolution, unzip_nifti
+from mdt.lib.nifti import nifti_filepath_resolution, unzip_nifti
 from mdt.utils import split_image_path
 
 

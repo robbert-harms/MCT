@@ -8,7 +8,7 @@ To view more information about a method use the mct-method-info command.
 """
 import argparse
 from mct.components_loader import list_reconstruction_methods
-from mdt.shell_utils import BasicShellApplication
+from mdt.lib.shell_utils import BasicShellApplication
 import textwrap
 
 __author__ = 'Robbert Harms'

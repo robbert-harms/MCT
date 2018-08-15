@@ -6,7 +6,7 @@ This outputs the documentation of the desired method.
 """
 import argparse
 from mct import get_reconstruction_method_class
-from mdt.shell_utils import BasicShellApplication
+from mdt.lib.shell_utils import BasicShellApplication
 import textwrap
 
 __author__ = 'Robbert Harms'

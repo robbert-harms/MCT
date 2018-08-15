@@ -14,7 +14,7 @@ import mdt
 
 from mct import load_nifti
 from mct.utils import calculate_noise_covariance_matrix
-from mdt.shell_utils import BasicShellApplication
+from mdt.lib.shell_utils import BasicShellApplication
 import textwrap
 
 __author__ = 'Francisco.Lagos'
