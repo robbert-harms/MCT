@@ -22,7 +22,7 @@ __email__ = "robbert.harms@maastrichtuniversity.nl"
 class CombineWeightedSum(BasicShellApplication):
 
     def __init__(self):
-        super(CombineWeightedSum, self).__init__()
+        super().__init__()
 
     def _get_arg_parser(self, doc_parser=False):
         description = textwrap.dedent(__doc__)

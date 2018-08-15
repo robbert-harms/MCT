@@ -48,7 +48,7 @@ class STARC(SliceBySliceReconstructionMethod):
             cl_device_ind (int or list of int): the list of indices into :func:`mct.utils.get_cl_devices` that you want
                 to use for the OpenCL based optimization.
         """
-        super(STARC, self).__init__(channels, **kwargs)
+        super().__init__(channels, **kwargs)
 
         cl_environments = None
         if cl_device_ind is not None:

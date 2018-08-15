@@ -18,7 +18,7 @@ __email__ = "robbert.harms@maastrichtuniversity.nl"
 class MethodInfo(BasicShellApplication):
 
     def __init__(self):
-        super(MethodInfo, self).__init__()
+        super().__init__()
 
     def _get_arg_parser(self, doc_parser=False):
         description = textwrap.dedent(__doc__)

@@ -36,7 +36,7 @@ class rCovSoS(SliceBySliceReconstructionMethod):
             covariance_noise_matrix (str or ndarray): the corresponding noise matrix to use. If a string is given it is
                 supposed to be a nifti file path.
         """
-        super(rCovSoS, self).__init__(channels, **kwargs)
+        super().__init__(channels, **kwargs)
         if isinstance(covariance_noise_matrix, str):
             covariance_noise_matrix = load_nifti(covariance_noise_matrix).get_data()
         self._inverse_covar = cholesky(inv(covariance_noise_matrix))

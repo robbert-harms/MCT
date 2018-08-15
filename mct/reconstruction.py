@@ -50,7 +50,7 @@ class SliceBySliceReconstructionMethod(ReconstructionMethod):
                     equals the number of channels.
             slicing_axis (int): the (x,y,z) axis over which we will loop to reconstruct the volumes. 0=x, 1=y, 2=z.
         """
-        super(SliceBySliceReconstructionMethod, self).__init__()
+        super().__init__()
         self._channels = channels
         self._logger = logging.getLogger(__name__)
         self._output_subdir = self.__class__.__name__

@@ -23,7 +23,7 @@ __author__ = 'Francisco.Lagos'
 class EstimateNoiseCovMatrix(BasicShellApplication):
 
     def __init__(self):
-        super(EstimateNoiseCovMatrix, self).__init__()
+        super().__init__()
 
     def _get_arg_parser(self, doc_parser=False):
         description = textwrap.dedent(__doc__)
