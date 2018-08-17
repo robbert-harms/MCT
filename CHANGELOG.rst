@@ -2,6 +2,12 @@
 Changelog
 *********
 
+v0.2.8 (2018-08-17)
+===================
+- Removed redundant super arguments.
+- Following changes in MOT and MDT.
+
+
 v0.2.7 (2018-08-02)
 ===================
 - Regression fix.
