@@ -71,11 +71,11 @@ class STARC(SliceBySliceReconstructionMethod):
 
         result = minimize(wrap_objective_function(get_starc_objective_func(batch),
                                                   codec.get_decode_function(), nmr_channels),
-                          codec.encode(self._get_starting_weights(slice_index, batch), {}),
-                          data={'observations': Array(batch.reshape((batch.shape[0], -1)))},
+                          codec.encode(self._get_starting_weights(slice_index, batch)),
+                          data=Array(batch.reshape((batch.shape[0], -1)), 'mot_float_type'),
                           cl_runtime_info=self.cl_runtime_info)
 
-        weights = codec.decode(result['x'], {})
+        weights = codec.decode(result['x'])
         reconstruction = np.sum(batch * weights[:, None, :], axis=2)
 
         sos = np.sqrt(np.sum(np.abs(slice_data).astype(np.float64) ** 2, axis=-1))
@@ -127,10 +127,7 @@ def get_starc_objective_func(voxel_data):
             return sum;
         }
 
-        double _inverse_tSNR(local const mot_float_type* x, 
-                             mot_data_struct* data){
-
-
+        double _inverse_tSNR(local const mot_float_type* x, mot_float_type* observations){
             local double volume_values[''' + str(nmr_volumes) + '''];
 
             uint local_id = get_local_id(0);
@@ -144,7 +141,7 @@ def get_starc_objective_func(voxel_data):
             for(uint i = 0; i < elements_for_workitem; i++){
                 volume_ind = i * workgroup_size + local_id;
                 volume_values[volume_ind] = _weighted_sum(
-                    x, data->observations + volume_ind * ''' + str(nmr_channels) + ''');
+                    x, observations + volume_ind * ''' + str(nmr_channels) + ''');
             }
             barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -170,12 +167,8 @@ def get_starc_objective_func(voxel_data):
             return sqrt(variance) / mean;
         }
         
-        double STARC(
-                local const mot_float_type* const x,
-                mot_data_struct* data, 
-                local mot_float_type* objective_list){
-
-            return _inverse_tSNR(x, data);
+        double STARC(local const mot_float_type* const x, void* data, local mot_float_type* objective_list){
+            return _inverse_tSNR(x, (mot_float_type*)data);
         }
     ''')
 
@@ -204,7 +197,7 @@ class STARCOptimizationCodec(ParameterCodec):
     def _get_encode_function(self):
         encode_transform = self._weights_codec.get_cl_encode()
         return SimpleCLFunction.from_string('''
-            void encodeParameters(mot_data_struct* data_void, local mot_float_type* x){
+            void encodeParameters(void* data, local mot_float_type* x){
                 double sum_of_weights = 0;
                 for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
                     sum_of_weights += x[i];
@@ -223,7 +216,7 @@ class STARCOptimizationCodec(ParameterCodec):
     def _get_decode_function(self):
         decode_transform = self._weights_codec.get_cl_decode()
         return SimpleCLFunction.from_string('''
-            void decodeParameters(mot_data_struct* data_void, local mot_float_type* x){
+            void decodeParameters(void* data, local mot_float_type* x){
                 double sum_of_weights = 0;
                 for(uint i = 0; i < ''' + str(self._nmr_optimized_weights) + '''; i++){
                     x[i] = ''' + decode_transform.create_assignment('x[i]', 0, 1) + ''';

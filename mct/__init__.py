@@ -25,12 +25,12 @@ try:
 
         handlers:
             console:
-                class: mdt.log_handlers.StdOutHandler
+                class: mdt.lib.log_handlers.StdOutHandler
                 level: INFO
                 formatter: simple
 
             dispatch_handler:
-                class: mdt.log_handlers.LogDispatchHandler
+                class: mdt.lib.log_handlers.LogDispatchHandler
                 level: INFO
                 formatter: simple
 
@@ -45,5 +45,5 @@ try:
     '''
     logging_config.dictConfig(yaml.safe_load(config))
 
-except ValueError:
-    print('Logging disabled')
+except ValueError as ex:
+    print('Logging disabled: {}'.format(ex))
