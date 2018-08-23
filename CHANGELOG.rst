@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.2.9 (2018-08-23)
+===================
+- Following changes in MOT.
+
+
 v0.2.8 (2018-08-17)
 ===================
 - Removed redundant super arguments.
