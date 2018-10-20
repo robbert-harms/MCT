@@ -1,8 +1,6 @@
 import os
 import nibabel as nib
 
-from mot.lib.load_balance_strategies import EvenDistribution
-
 import mot
 import numpy as np
 import mdt
@@ -107,9 +105,7 @@ def get_mot_config_context(cl_device_ind):
         return mot.configuration.VoidConfigurationAction()
 
     cl_envs = [get_cl_devices()[ind] for ind in cl_device_ind]
-    return mot.configuration.RuntimeConfigurationAction(
-        cl_environments=cl_envs,
-        load_balancer=EvenDistribution())
+    return mot.configuration.RuntimeConfigurationAction(cl_environments=cl_envs)
 
 
 def combine_weighted_sum(input_channels, weights, output_filename):

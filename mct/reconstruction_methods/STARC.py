@@ -2,7 +2,7 @@ from textwrap import dedent
 
 from mct.utils import get_cl_devices
 from mdt.model_building.parameter_functions.transformations import CosSqrClampTransform
-from mdt.model_building.utils import wrap_objective_function
+from mdt.model_building.utils import ObjectiveFunctionWrapper
 
 from mct.reconstruction import SliceBySliceReconstructionMethod
 import mdt
@@ -13,7 +13,7 @@ from mot import minimize
 from mot.lib.cl_function import SimpleCLFunction
 from mot.configuration import CLRuntimeInfo
 from mot.lib.utils import dtype_to_ctype, parse_cl_function
-from mot.lib.kernel_data import Array
+from mot.lib.kernel_data import Array, Struct, LocalMemory
 
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
@@ -69,10 +69,15 @@ class STARC(SliceBySliceReconstructionMethod):
 
         codec = STARCOptimizationCodec(nmr_channels)
 
-        result = minimize(wrap_objective_function(get_starc_objective_func(batch),
-                                                  codec.get_decode_function(), nmr_channels),
+        data = Struct({'observations': Array(batch.reshape((batch.shape[0], -1))),
+                       'scratch': LocalMemory('double', nmr_items=batch.shape[1] + 4)},
+                      'starc_data')
+
+        wrapper = ObjectiveFunctionWrapper(nmr_channels)
+
+        result = minimize(wrapper.wrap_objective_function(get_starc_objective_func(batch), codec.get_decode_function()),
                           codec.encode(self._get_starting_weights(slice_index, batch)),
-                          data=Array(batch.reshape((batch.shape[0], -1)), 'mot_float_type'),
+                          data=wrapper.wrap_input_data(data),
                           cl_runtime_info=self.cl_runtime_info)
 
         weights = codec.decode(result['x'])
@@ -119,7 +124,7 @@ def get_starc_objective_func(voxel_data):
     data_ctype = dtype_to_ctype(voxel_data.dtype)
 
     return parse_cl_function('''
-        double _weighted_sum(local mot_float_type* weights, global ''' + data_ctype + '''* observations){
+        double _weighted_sum(local const mot_float_type* weights, global ''' + data_ctype + '''* observations){
             double sum = 0;
             for(uint i = 0; i < ''' + str(nmr_channels) + '''; i++){
                 sum += weights[i] * observations[i];
@@ -127,48 +132,50 @@ def get_starc_objective_func(voxel_data):
             return sum;
         }
 
-        double _inverse_tSNR(local const mot_float_type* x, mot_float_type* observations){
-            local double volume_values[''' + str(nmr_volumes) + '''];
-
+        double _inverse_tSNR(
+                local const mot_float_type* x, 
+                global ''' + data_ctype + '''* observations,
+                local double* scratch){
+            
+            local double* variance = scratch++;
+            local double* mean = scratch++;
+            local double* delta = scratch++;
+            local double* value = scratch++;    
+            local double* volume_values = scratch;
+            
             uint local_id = get_local_id(0);
             uint workgroup_size = get_local_size(0);
-            uint elements_for_workitem = ceil(''' + str(nmr_volumes) + '''/ (mot_float_type)workgroup_size);                
-            if(workgroup_size * (elements_for_workitem - 1) + local_id >= ''' + str(nmr_volumes) + '''){
-                elements_for_workitem -= 1;
-            }
 
             uint volume_ind;
-            for(uint i = 0; i < elements_for_workitem; i++){
+            for(uint i = 0; i < (''' + str(nmr_volumes) + ''' + workgroup_size - 1) / workgroup_size; i++){
                 volume_ind = i * workgroup_size + local_id;
-                volume_values[volume_ind] = _weighted_sum(
-                    x, observations + volume_ind * ''' + str(nmr_channels) + ''');
+                
+                if(volume_ind < ''' + str(nmr_volumes) + '''){
+                    volume_values[volume_ind] = _weighted_sum(
+                        x, observations + volume_ind * ''' + str(nmr_channels) + ''');
+                }
             }
             barrier(CLK_LOCAL_MEM_FENCE);
-
-            local double variance;
-            local double mean;
-            local double delta;
-            local double value;
 
             if(get_local_id(0) == 0){
-                variance = 0;
-                mean = 0;
+                *variance = 0;
+                *mean = 0;
 
                 for(uint i = 0; i < ''' + str(nmr_volumes) + '''; i++){
-                    value = volume_values[i];
-                    delta = value - mean;
-                    mean += delta / (i + 1);
-                    variance += delta * (value - mean);
+                    *value = volume_values[i];
+                    *delta = *value - *mean;
+                    *mean += *delta / (i + 1);
+                    *variance += *delta * (*value - *mean);
                 }
-                variance /= (''' + str(nmr_volumes) + ''' - 1);
+                *variance /= (''' + str(nmr_volumes) + ''' - 1);
             }
             barrier(CLK_LOCAL_MEM_FENCE);
 
-            return sqrt(variance) / mean;
+            return sqrt(*variance) / *mean;
         }
         
         double STARC(local const mot_float_type* const x, void* data, local mot_float_type* objective_list){
-            return _inverse_tSNR(x, (mot_float_type*)data);
+            return _inverse_tSNR(x, ((starc_data*)data)->observations, ((starc_data*)data)->scratch);
         }
     ''')
 
