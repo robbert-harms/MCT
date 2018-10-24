@@ -1,5 +1,5 @@
-mdt>=0.15.7
-mot>=0.6.14
+mdt>=0.15.8
+mot>=0.7.0
 numpy
 nibabel
 pyyaml
