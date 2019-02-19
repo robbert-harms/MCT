@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.2.11 (2019-02-19)
+====================
+- Following changes in MDT.
+
+
 v0.2.10 (2018-10-24)
 ====================
 - Rebased against the latest MOT and MDT versions.
