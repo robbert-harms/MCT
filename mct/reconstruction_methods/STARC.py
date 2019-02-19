@@ -2,7 +2,7 @@ from textwrap import dedent
 
 from mct.utils import get_cl_devices
 from mdt.model_building.parameter_functions.transformations import CosSqrClampTransform
-from mdt.model_building.utils import ObjectiveFunctionWrapper
+from mdt.model_building.utils import ParameterDecodingWrapper
 
 from mct.reconstruction import SliceBySliceReconstructionMethod
 import mdt
@@ -73,7 +73,7 @@ class STARC(SliceBySliceReconstructionMethod):
                        'scratch': LocalMemory('double', nmr_items=batch.shape[1] + 4)},
                       'starc_data')
 
-        wrapper = ObjectiveFunctionWrapper(nmr_channels)
+        wrapper = ParameterDecodingWrapper(nmr_channels)
 
         result = minimize(wrapper.wrap_objective_function(get_starc_objective_func(batch), codec.get_decode_function()),
                           codec.encode(self._get_starting_weights(slice_index, batch)),
