@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.3.0 (2019-07-11)
+===================
+- Made STARC working again with the latest MDT version.
+
+
 v0.2.11 (2019-02-19)
 ====================
 - Following changes in MDT.
