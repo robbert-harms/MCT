@@ -73,9 +73,9 @@ class STARC(SliceBySliceReconstructionMethod):
                        'scratch': LocalMemory('double', nmr_items=batch.shape[1] + 4)},
                       'starc_data')
 
-        wrapper = ParameterDecodingWrapper(nmr_channels)
+        wrapper = ParameterDecodingWrapper(nmr_channels, codec.get_decode_function())
 
-        result = minimize(wrapper.wrap_objective_function(get_starc_objective_func(batch), codec.get_decode_function()),
+        result = minimize(wrapper.wrap_objective_function(get_starc_objective_func(batch)),
                           codec.encode(self._get_starting_weights(slice_index, batch)),
                           data=wrapper.wrap_input_data(data),
                           cl_runtime_info=self.cl_runtime_info)
