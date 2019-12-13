@@ -21,7 +21,7 @@ Summary
 * Free Open Source Software: LGPL v3 license
 * Python and OpenCL based
 * Full documentation: https://mct.readthedocs.io/
-* Project home: https://github.com/cbclab/MCT
+* Project home: https://github.com/robbert-harms/MCT
 * Uses the `GitLab workflow <https://docs.gitlab.com/ee/workflow/gitlab_flow.html>`_
 * Tags: MRI, coil-reconstruct, image reconstruction, opencl, python
 
