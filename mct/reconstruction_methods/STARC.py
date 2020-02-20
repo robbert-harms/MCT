@@ -1,6 +1,5 @@
 from textwrap import dedent
 
-from mct.utils import get_cl_devices
 from mdt.model_building.parameter_functions.transformations import CosSqrClampTransform
 from mdt.model_building.utils import ParameterDecodingWrapper
 
@@ -18,14 +17,15 @@ from mot.lib.kernel_data import Array, Struct, LocalMemory
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
 __maintainer__ = 'Robbert Harms'
-__email__ = 'robbert.harms@maastrichtuniversity.nl'
+__email__ = 'robbert@xkls.nl'
 __licence__ = 'LGPL v3'
 
 
 class STARC(SliceBySliceReconstructionMethod):
 
     command_line_info = dedent('''
-        The STARC (STAbility-weighted Rf-coil Combination) method [1] reconstructs EPI acquisitions using a weighted sum of the input channels. The weights are chosen such that the reconstruction has optimal tSNR.
+        The STARC (STAbility-weighted Rf-coil Combination) method [1] reconstructs EPI acquisitions using a weighted
+        sum of the input channels. The weights are chosen such that the reconstruction has optimal tSNR.
 
         Required args:
             None
@@ -34,7 +34,11 @@ class STARC(SliceBySliceReconstructionMethod):
             starting_points="<nifti_file>" - the starting point for the optimization routine
 
         References:
-            * Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
+            [1] Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC),
+                L. Huber et al. ISMRM 2017 abstract #0586.
+            [2] Kashyap S, Fritz FJ, Harms RL, Huber L, Ivanov D, Roebroeck A, Poser BA, Uludag, K.
+                Effect of optimised coil-combinations on high-resolution laminar fMRI at 9.4T,
+                Proceedings of ISMRM 2018 Abstract #5442, (https://doi.org/10.7490/f1000research.1117449.1)
     ''')
 
     def __init__(self, channels, x0=None, cl_device_ind=None, **kwargs):
@@ -49,14 +53,7 @@ class STARC(SliceBySliceReconstructionMethod):
                 to use for the OpenCL based optimization.
         """
         super().__init__(channels, **kwargs)
-
-        cl_environments = None
-        if cl_device_ind is not None:
-            if not isinstance(cl_device_ind, (tuple, list)):
-                cl_device_ind = [cl_device_ind]
-            cl_environments = [get_cl_devices()[ind] for ind in cl_device_ind]
-
-        self.cl_runtime_info = CLRuntimeInfo(cl_environments=cl_environments)
+        self.cl_runtime_info = CLRuntimeInfo(cl_environments=cl_device_ind)
         self._x0 = x0
         if isinstance(self._x0, str):
             self._x0 = mdt.load_nifti(x0).get_data()
@@ -69,7 +66,7 @@ class STARC(SliceBySliceReconstructionMethod):
 
         codec = STARCOptimizationCodec(nmr_channels)
 
-        data = Struct({'observations': Array(batch.reshape((batch.shape[0], -1))),
+        data = Struct({'observations': Array(batch.reshape((batch.shape[0], -1)), mode='r'),
                        'scratch': LocalMemory('double', nmr_items=batch.shape[1] + 4)},
                       'starc_data')
 
@@ -133,27 +130,21 @@ def get_starc_objective_func(voxel_data):
         }
 
         double _inverse_tSNR(
-                local const mot_float_type* x, 
+                local const mot_float_type* x,
                 global ''' + data_ctype + '''* observations,
                 local double* scratch){
-            
+
             local double* variance = scratch++;
             local double* mean = scratch++;
             local double* delta = scratch++;
-            local double* value = scratch++;    
+            local double* value = scratch++;
             local double* volume_values = scratch;
-            
-            uint local_id = get_local_id(0);
-            uint workgroup_size = get_local_size(0);
 
-            uint volume_ind;
-            for(uint i = 0; i < (''' + str(nmr_volumes) + ''' + workgroup_size - 1) / workgroup_size; i++){
-                volume_ind = i * workgroup_size + local_id;
-                
-                if(volume_ind < ''' + str(nmr_volumes) + '''){
-                    volume_values[volume_ind] = _weighted_sum(
-                        x, observations + volume_ind * ''' + str(nmr_channels) + ''');
-                }
+            uint batch_range;
+            uint offset = get_workitem_batch(''' + str(nmr_volumes) + ''', &batch_range);
+
+            for(uint i = offset; i < offset + batch_range; i++){
+                volume_values[i] = _weighted_sum(x, observations + i * ''' + str(nmr_channels) + ''');
             }
             barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -173,7 +164,7 @@ def get_starc_objective_func(voxel_data):
 
             return sqrt(*variance) / *mean;
         }
-        
+
         double STARC(local const mot_float_type* const x, void* data, local mot_float_type* objective_list){
             return _inverse_tSNR(x, ((starc_data*)data)->observations, ((starc_data*)data)->scratch);
         }

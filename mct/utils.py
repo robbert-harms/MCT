@@ -12,7 +12,7 @@ from mdt.utils import split_image_path
 __author__ = 'Robbert Harms'
 __date__ = '2017-09-09'
 __maintainer__ = 'Robbert Harms'
-__email__ = 'robbert.harms@maastrichtuniversity.nl'
+__email__ = 'robbert@xkls.nl'
 __licence__ = 'LGPL v3'
 
 

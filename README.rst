@@ -3,13 +3,8 @@ MRI Coil-reconstruct Toolbox
 ############################
 The MRI Coil-reconstruct Toolbox, MCT, is a small toolbox for combining the channels of a multi-channel MRI acquisition.
 Where possible, this toolbox uses GPU accelerated routines to speed-up the processing.
-For example, the weights of the STARC (STAbility-weighted Rf-coil Combination) reconstruction model are fitted using the GPU or using multi-threaded CPU.
+For example, the weights of the STARC (STAbility-weighted Rf-coil Combination) reconstruction model are fitted using the GPU or using multi-threaded CPU (utilizing OpenCL).
 At the moment MCT supports rSoS (root Sum Of Squares), rCovSoS (same as SoS but than with additional usage of a noise covariance matrix) and STARC.
-
-
-**Beta version notice**
-
-Please note that this software is still in beta and that the user interface may change over versions.
 
 
 *******
@@ -22,7 +17,6 @@ Summary
 * Python and OpenCL based
 * Full documentation: https://mct.readthedocs.io/
 * Project home: https://github.com/robbert-harms/MCT
-* Uses the `GitLab workflow <https://docs.gitlab.com/ee/workflow/gitlab_flow.html>`_
 * Tags: MRI, coil-reconstruct, image reconstruction, opencl, python
 
 
@@ -30,7 +24,7 @@ Summary
 Data reconstruction
 *******************
 This software contains various reconstruction methods that can be used to combine your channels into one (or more) volumes.
-Not all reconstruction methods may be applicable to your data, for example the STARC [1] method only works when dealing with fMRI data.
+Not all reconstruction methods may be applicable to your data, for example the STARC [1] method only works when working with fMRI data.
 
 Console
 =======
@@ -76,7 +70,7 @@ This would reconstruct your data using rSoS using only the odd volumes.
 References:
 ===========
     1) Simple approach to improve time series fMRI stability: STAbility-weighted Rf-coil Combination (STARC), L. Huber et al. ISMRM 2017 abstract #0586.
-
+    2) Kashyap S, Fritz FJ, Harms RL, Huber L, Ivanov D, Roebroeck A, Poser BA, Uludag, K. Effect of optimised coil-combinations on high-resolution laminar fMRI at 9.4T, Proceedings of ISMRM 2018 Abstract #5442, (https://doi.org/10.7490/f1000research.1117449.1)
 
 ************************
 Quick installation guide
@@ -139,3 +133,5 @@ Roadmap
     * SENSE
 
 2) Improve the data handling and memory usage.
+
+3) Interruptable processing (saving intermediate data to HD and start from there)
