@@ -2,6 +2,13 @@
 Changelog
 *********
 
+v0.3.1 (2020-02-20)
+===================
+- Adds scientific reference.
+- Updated maintainer e-mail address.
+- Moved repository to personal github account.
+
+
 v0.3.0 (2019-07-11)
 ===================
 - Made STARC working again with the latest MDT version.
