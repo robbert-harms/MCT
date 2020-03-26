@@ -2,6 +2,11 @@
 Changelog
 *********
 
+v0.3.2 (2020-03-26)
+===================
+- MDT reference bump.
+
+
 v0.3.1 (2020-02-20)
 ===================
 - Adds scientific reference.
