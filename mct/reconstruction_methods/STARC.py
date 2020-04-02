@@ -84,6 +84,8 @@ class STARC(SliceBySliceReconstructionMethod):
         reconstruction = np.reshape(reconstruction, slice_data.shape[:-2] + (nmr_timeseries,))
         reconstruction *= (np.mean(sos, axis=2) / np.mean(reconstruction, axis=2))[:, :, None]
 
+        reconstruction = np.nan_to_num(reconstruction, copy=False)
+
         return {
             'weights': np.reshape(weights, slice_data.shape[:-2] + (nmr_channels,)),
             'reconstruction': reconstruction,
